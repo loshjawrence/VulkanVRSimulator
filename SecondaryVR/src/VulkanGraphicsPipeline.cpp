@@ -5,13 +5,13 @@
 #include <stdexcept>
 #include <iostream>
 #include <sstream>
+#include <string>
 
 VulkanGraphicsPipeline::VulkanGraphicsPipeline(const std::vector<std::string>& shaderpaths,
-	const VulkanRenderPass& renderPass, const VulkanDevices& devices,
-	const VulkanSwapChain& swapchain, const VkDescriptorSetLayout* setLayouts) 
+	const VulkanRenderPass& renderPass, const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts) 
 	: shaderpaths(shaderpaths)
 {
-	createGraphicsPipeline(renderPass, devices, swapchain, setLayouts);
+	createGraphicsPipeline(renderPass, contextInfo, setLayouts);
 }
 
 
@@ -19,13 +19,13 @@ VulkanGraphicsPipeline::~VulkanGraphicsPipeline() {
 }
 
 void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& renderPass,
-	const VulkanDevices& devices, const VulkanSwapChain& swapchain, const VkDescriptorSetLayout* setLayouts)
+	const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts)
 {
 	auto vertShaderCode = readFile(shaderpaths[0]);
 	auto fragShaderCode = readFile(shaderpaths[1]);
 
-	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode, devices);
-	VkShaderModule fragShaderModule = createShaderModule(fragShaderCode, devices);
+	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode, contextInfo);
+	VkShaderModule fragShaderModule = createShaderModule(fragShaderCode, contextInfo);
 
 	VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
 	vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -61,14 +61,14 @@ void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& rend
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)swapchain.swapChainExtent.width;
-	viewport.height = (float)swapchain.swapChainExtent.height;
+	viewport.width = (float)contextInfo.swapChainExtent.width;
+	viewport.height = (float)contextInfo.swapChainExtent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	scissor.extent = swapchain.swapChainExtent;
+	scissor.extent = contextInfo.swapChainExtent;
 
 	VkPipelineViewportStateCreateInfo viewportState = {};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -120,8 +120,9 @@ void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& rend
 	pipelineLayoutInfo.setLayoutCount = 1;
 	pipelineLayoutInfo.pSetLayouts = setLayouts;
 
-	if (vkCreatePipelineLayout(devices.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create pipeline layout!");
+	if (vkCreatePipelineLayout(contextInfo.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create pipeline layout!";
+		throw std::runtime_error(ss.str());
 	}
 
 	VkGraphicsPipelineCreateInfo pipelineInfo = {};
@@ -140,16 +141,17 @@ void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& rend
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	if (vkCreateGraphicsPipelines(devices.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create graphics pipeline!");
+	if (vkCreateGraphicsPipelines(contextInfo.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create graphics pipeline!";
+		throw std::runtime_error(ss.str());
 	}
 
-	vkDestroyShaderModule(devices.device, fragShaderModule, nullptr);
-	vkDestroyShaderModule(devices.device, vertShaderModule, nullptr);
+	vkDestroyShaderModule(contextInfo.device, fragShaderModule, nullptr);
+	vkDestroyShaderModule(contextInfo.device, vertShaderModule, nullptr);
 }
 
 VkShaderModule VulkanGraphicsPipeline::createShaderModule( const std::vector<char>& code, 
-	const VulkanDevices& devices) const 
+	const VulkanContextInfo& contextInfo) const 
 {
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -157,8 +159,9 @@ VkShaderModule VulkanGraphicsPipeline::createShaderModule( const std::vector<cha
 	createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
 	VkShaderModule shaderModule;
-	if (vkCreateShaderModule(devices.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create shader module!");
+	if (vkCreateShaderModule(contextInfo.device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create shader module!";
+		throw std::runtime_error(ss.str());
 	}
 
 	return shaderModule;

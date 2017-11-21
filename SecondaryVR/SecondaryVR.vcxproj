@@ -120,29 +120,25 @@
   <ItemGroup>
     <ClCompile Include="src\Renderer.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\VulkanInstance.cpp" />
-    <ClCompile Include="src\VulkanDevices.cpp" />
-    <ClCompile Include="src\VulkanSwapChain.cpp" />
+    <ClCompile Include="src\VulkanContextInfo.cpp" />
     <ClCompile Include="src\VulkanRenderPass.cpp" />
-    <ClCompile Include="src\VulkanDescriptorSetLayout.cpp" />
+    <ClCompile Include="src\VulkanDescriptor.cpp" />
     <ClCompile Include="src\VulkanGraphicsPipeline.cpp" />
     <ClCompile Include="src\Vertex.cpp" />
-    <ClCompile Include="src\VulkanCommandPool.cpp" />
     <ClCompile Include="src\VulkanImage.cpp" />
+    <ClCompile Include="src\VulkanBuffer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Renderer.h" />
     <ClInclude Include="src\GlobalSettings.h" />
     <ClInclude Include="src\Utils.h" />
-    <ClInclude Include="src\VulkanInstance.h" />
-    <ClInclude Include="src\VulkanDevices.h" />
-    <ClInclude Include="src\VulkanSwapChain.h" />
+    <ClInclude Include="src\VulkanContextInfo.h" />
     <ClInclude Include="src\VulkanRenderPass.h" />
-    <ClInclude Include="src\VulkanDescriptorSetLayout.h" />
+    <ClInclude Include="src\VulkanDescriptor.h" />
     <ClInclude Include="src\VulkanGraphicsPipeline.h" />
     <ClInclude Include="src\Vertex.h" />
-    <ClInclude Include="src\VulkanCommandPool.h" />
     <ClInclude Include="src\VulkanImage.h" />
+    <ClInclude Include="src\VulkanBuffer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

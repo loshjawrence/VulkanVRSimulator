@@ -5,8 +5,7 @@
 #include <GLFW/glfw3.h>
 #endif // !GLFW_INCLUDE_VULKAN
 
-#include "VulkanDevices.h"
-#include "VulkanSwapChain.h"
+#include "VulkanContextInfo.h"
 
 
 //"A pipeline is always built relative to a specific subpass of a specific render pass. It cannot be used in any other subpass.
@@ -19,9 +18,11 @@
 class VulkanRenderPass {
 public:
 	VkRenderPass renderPass;
+	
+
 public:
-	VulkanRenderPass(const VulkanDevices& devices, const VulkanSwapChain& swapchain);
+	VulkanRenderPass(const VulkanContextInfo& contextInfo);
 	~VulkanRenderPass();
-	void createRenderPass(const VulkanDevices& devices, const VkFormat& swapchainformat);
+	void createRenderPass(const VulkanContextInfo& contextInfo);
 };
 

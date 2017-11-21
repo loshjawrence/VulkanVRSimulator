@@ -5,19 +5,17 @@
 #include <sstream>
 #include <string>
 
-VulkanRenderPass::VulkanRenderPass(const VulkanDevices& devices, const VulkanSwapChain& swapchain) {
-	//breakup createRenderPass function into pieces(each component of renderpassinfo)? 
-	//pass in parameters to specify things like num subpasses, attachments, etc?
-	createRenderPass(devices, swapchain.swapChainImageFormat);
+VulkanRenderPass::VulkanRenderPass(const VulkanContextInfo& contextInfo) {
+	createRenderPass(contextInfo);
 }
 
 
 VulkanRenderPass::~VulkanRenderPass() {
 }
 
-void VulkanRenderPass::createRenderPass(const VulkanDevices& devices, const VkFormat& swapchainformat) {
+void VulkanRenderPass::createRenderPass(const VulkanContextInfo& contextInfo) {
 	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = swapchainformat;
+	colorAttachment.format = contextInfo.swapChainImageFormat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -27,7 +25,7 @@ void VulkanRenderPass::createRenderPass(const VulkanDevices& devices, const VkFo
 	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentDescription depthAttachment = {};
-	depthAttachment.format = devices.depthFormat;
+	depthAttachment.format = contextInfo.depthFormat;
 	depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -68,7 +66,7 @@ void VulkanRenderPass::createRenderPass(const VulkanDevices& devices, const VkFo
 	renderPassInfo.dependencyCount = 1;
 	renderPassInfo.pDependencies = &dependency;
 
-	if (vkCreateRenderPass(devices.device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
+	if (vkCreateRenderPass(contextInfo.device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS) {
 		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create render pass!";
 		throw std::runtime_error(ss.str());
 	}

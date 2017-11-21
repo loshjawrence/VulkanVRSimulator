@@ -1,3 +1,4 @@
+#pragma once
 #include "VulkanImage.h"
 #include "Utils.h"
 #include <stdexcept>
@@ -5,27 +6,78 @@
 #include <sstream>
 #include <string>
 
+
+#ifndef STB_IMAGE_IMPLEMENTATION
+//#define STB_IMAGE_IMPLEMENTATION YEA DONT ADD THIS AS WELL, the define needs to be in only ONE c or cpp file
+#include <stb_image.h>
+#endif
+
 //helper
 bool hasStencilComponent(VkFormat format) {
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
 VulkanImage::VulkanImage(const IMAGETYPE& imagetype, const VkExtent2D& extent, const VkFormat& format,
-	const VulkanDevices& devices, const VkCommandPool& commandPool, std::string& filepath)
+	const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool, std::string& filepath)
 	: extent(extent), format(format), imagetype(imagetype), filepath(filepath)
 {
-	createImage(devices);
-	createImageView(devices);
-	//if needed transition image layout, TODO: look up what this is doing
-	transitionImageLayout(devices, commandPool);
+	if (imagetype == IMAGETYPE::DEPTH) {
+		createDepthImage(contextInfo, commandPool);
+	} else if (imagetype == IMAGETYPE::TEXTURE) {
+		createTextureImage(contextInfo, commandPool);
+	}
 }
 
 
 VulkanImage::~VulkanImage() {
 }
 
+void VulkanImage::createDepthImage(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool) {
+	createImage(contextInfo);
+	createImageView(contextInfo);
+	transitionImageLayout(contextInfo, commandPool, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+}
 
-void VulkanImage::createImage(const VulkanDevices& devices) {
+void VulkanImage::createTextureImage(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool) {
+	int texWidth, texHeight, texChannels;
+	stbi_uc* pixels = stbi_load(filepath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	extent.width = texWidth;
+	extent.height = texHeight;
+	VkDeviceSize imageSize = extent.width * extent.height * 4;
+
+	if (!pixels) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to load texture image!";
+		throw std::runtime_error(ss.str());
+	}
+
+	VkBuffer stagingBuffer;
+	VkDeviceMemory stagingBufferMemory;
+	createBuffer(contextInfo, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+	void* data;
+	vkMapMemory(contextInfo.device, stagingBufferMemory, 0, imageSize, 0, &data);
+	memcpy(data, pixels, static_cast<size_t>(imageSize));
+	vkUnmapMemory(contextInfo.device, stagingBufferMemory);
+
+	stbi_image_free(pixels);
+	createImage(contextInfo);
+//
+//	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	transitionImageLayout(contextInfo, commandPool, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	copyBufferToImage(contextInfo, commandPool, stagingBuffer, image, extent.width, extent.height);
+	//transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	transitionImageLayout(contextInfo, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	vkDestroyBuffer(contextInfo.device, stagingBuffer, nullptr);
+	vkFreeMemory(contextInfo.device, stagingBufferMemory, nullptr);
+
+	createImageView(contextInfo);
+
+	createImageSampler(contextInfo);
+	
+}
+
+void VulkanImage::createImage(const VulkanContextInfo& contextInfo) {
 	//VkThings
 	VkImageTiling tiling;
 	VkImageUsageFlags usage;
@@ -35,7 +87,9 @@ void VulkanImage::createImage(const VulkanDevices& devices) {
 		usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 		properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	} else if (imagetype == IMAGETYPE::TEXTURE) {
-
+		tiling = VK_IMAGE_TILING_OPTIMAL;
+		usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	}
 
 	VkImageCreateInfo imageInfo = {};
@@ -53,33 +107,33 @@ void VulkanImage::createImage(const VulkanDevices& devices) {
 	imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	if (vkCreateImage(devices.device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
+	if (vkCreateImage(contextInfo.device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
 		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create image!";
 		throw std::runtime_error(ss.str());
 	}
 
 	VkMemoryRequirements memRequirements;
-	vkGetImageMemoryRequirements(devices.device, image, &memRequirements);
+	vkGetImageMemoryRequirements(contextInfo.device, image, &memRequirements);
 
 	VkMemoryAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = findMemoryType(devices.physicalDevice, memRequirements.memoryTypeBits, properties);
+	allocInfo.memoryTypeIndex = findMemoryType(contextInfo.physicalDevice, memRequirements.memoryTypeBits, properties);
 
-	if (vkAllocateMemory(devices.device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+	if (vkAllocateMemory(contextInfo.device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
 		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to allocate image memory!";
 		throw std::runtime_error(ss.str());
 	}
 
-	vkBindImageMemory(devices.device, image, imageMemory, 0);
+	vkBindImageMemory(contextInfo.device, image, imageMemory, 0);
 }
 
-void VulkanImage::createImageView(const VulkanDevices& devices) {
+void VulkanImage::createImageView(const VulkanContextInfo& contextInfo) {
 	VkImageAspectFlags aspectFlags;
 	if (imagetype == IMAGETYPE::DEPTH) {
 		aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
 	} else if (imagetype == IMAGETYPE::TEXTURE) {
-
+		aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 	}
 
 	VkImageViewCreateInfo viewInfo = {};
@@ -93,23 +147,16 @@ void VulkanImage::createImageView(const VulkanDevices& devices) {
 	viewInfo.subresourceRange.baseArrayLayer = 0;
 	viewInfo.subresourceRange.layerCount = 1;
 
-	if (vkCreateImageView(devices.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+	if (vkCreateImageView(contextInfo.device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
 		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create image view!";
 		throw std::runtime_error(ss.str());
 	}
 }
 
-void VulkanImage::transitionImageLayout(const VulkanDevices& devices, const VkCommandPool& commandPool) {
-	//VkThings
-	VkImageLayout oldLayout; VkImageLayout newLayout;
-	if (imagetype == IMAGETYPE::DEPTH) {
-		oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-		newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-	} else if (imagetype == IMAGETYPE::TEXTURE) {
-
-	}
-
-	VkCommandBuffer commandBuffer = beginSingleTimeCommands(devices.device, commandPool);
+void VulkanImage::transitionImageLayout(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool, 
+	const VkImageLayout oldLayout, const VkImageLayout newLayout) 
+{
+	VkCommandBuffer commandBuffer = beginSingleTimeCommands(contextInfo.device, commandPool);
 
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -166,5 +213,46 @@ void VulkanImage::transitionImageLayout(const VulkanDevices& devices, const VkCo
 		1, &barrier
 	);
 
-	endSingleTimeCommands(devices.device, commandPool, commandBuffer, devices.graphicsQueue);
+	endSingleTimeCommands(contextInfo.device, commandPool, commandBuffer, contextInfo.graphicsQueue);
+}
+void VulkanImage::createImageSampler(const VulkanContextInfo& contextInfo) {
+	VkSamplerCreateInfo samplerInfo = {};
+	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+	samplerInfo.magFilter = VK_FILTER_LINEAR;
+	samplerInfo.minFilter = VK_FILTER_LINEAR;
+	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+	samplerInfo.anisotropyEnable = VK_TRUE;
+	samplerInfo.maxAnisotropy = 16;
+	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+	samplerInfo.unnormalizedCoordinates = VK_FALSE;
+	samplerInfo.compareEnable = VK_FALSE;
+	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+
+	if (vkCreateSampler(contextInfo.device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
+		throw std::runtime_error("failed to create texture sampler!");
+	}
+}
+VkImageView VulkanImage::createImageView(const VkImage& image, const VkFormat& format,
+		const VkImageAspectFlags& aspectFlags, const VkDevice& device)
+{
+	VkImageViewCreateInfo viewInfo = {};
+	viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	viewInfo.image = image;
+	viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	viewInfo.format = format;
+	viewInfo.subresourceRange.aspectMask = aspectFlags;
+	viewInfo.subresourceRange.baseMipLevel = 0;
+	viewInfo.subresourceRange.levelCount = 1;
+	viewInfo.subresourceRange.baseArrayLayer = 0;
+	viewInfo.subresourceRange.layerCount = 1;
+
+	VkImageView imageView;
+	if (vkCreateImageView(device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create image view!";
+		throw std::runtime_error(ss.str());
+	}
+	return imageView;
 }

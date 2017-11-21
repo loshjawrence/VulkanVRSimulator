@@ -5,9 +5,8 @@
 #include <GLFW/glfw3.h>
 #endif // !GLFW_INCLUDE_VULKAN
 
-#include "VulkanDevices.h"
-#include "VulkanSwapChain.h"
-#include "VulkanDescriptorSetLayout.h"
+#include "VulkanContextInfo.h"
+#include "VulkanDescriptor.h"
 #include "VulkanRenderPass.h"
 #include "Vertex.h"
 
@@ -20,6 +19,7 @@
 //a renderpass is just a collection of subpasses describing how those subpasses relate to eachother(hand-off results from one subpass to another)
 
 
+//TODO: make base class and subclasses
 
 class VulkanGraphicsPipeline {
 public:
@@ -29,13 +29,13 @@ public:
 
 public:
 	VulkanGraphicsPipeline(const std::vector<std::string>& shaderspaths, const VulkanRenderPass& renderPass,
-		const VulkanDevices& devices, const VulkanSwapChain& swapchain, const VkDescriptorSetLayout* setLayouts);
+		const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts);
 
 	~VulkanGraphicsPipeline();
 
-	void createGraphicsPipeline(const VulkanRenderPass& renderPass, const VulkanDevices& devices, 
-		const VulkanSwapChain& swapchain, const VkDescriptorSetLayout* setLayouts);
+	void createGraphicsPipeline(const VulkanRenderPass& renderPass, const VulkanContextInfo& contextInfo, 
+		const VkDescriptorSetLayout* setLayouts);
 
-	VkShaderModule createShaderModule(const std::vector<char>& code, const VulkanDevices& devices) const;
+	VkShaderModule createShaderModule(const std::vector<char>& code, const VulkanContextInfo& contextInfo) const;
 };
 

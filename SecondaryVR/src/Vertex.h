@@ -1,8 +1,7 @@
 #pragma once
 
-#include "VulkanDevices.h"
-#include "VulkanSwapChain.h"
-#include "VulkanDescriptorSetLayout.h"
+#include "VulkanContextInfo.h"
+#include "VulkanDescriptor.h"
 #include "VulkanRenderPass.h"
 
 #include <vector>
