@@ -10,6 +10,9 @@
 #include <array>
 
 
+VulkanContextInfo::VulkanContextInfo() {
+
+}
 VulkanContextInfo::VulkanContextInfo(GLFWwindow* window) {
 	createInstance();
 	createSurface(window);
@@ -17,9 +20,10 @@ VulkanContextInfo::VulkanContextInfo(GLFWwindow* window) {
 	createLogicalDevice();
 	acquireDeviceQueues();
 	addGraphicsCommandPool(1);
-	determineDepthFormat();
 	createSwapChain(window);
 	createSwapChainImageViews();
+	determineDepthFormat();
+	//createDepthImage();
 }
 
 
@@ -241,6 +245,11 @@ VkFormat VulkanContextInfo::findSupportedFormat(const std::vector<VkFormat>& can
 	throw std::runtime_error(ss.str());
 }
 
+//void VulkanContextInfo::createDepthImage() {
+	//determineDepthFormat();
+	//depthImage = VulkanImage(IMAGETYPE::DEPTH, swapChainExtent, depthFormat, *this, graphicsCommandPools[0]);
+//}
+
 void VulkanContextInfo::determineDepthFormat() {
 	depthFormat = findSupportedFormat(
 	{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
@@ -309,6 +318,7 @@ void VulkanContextInfo::addGraphicsCommandPool(const int num) {
 }
 
 void VulkanContextInfo::createSwapChain(GLFWwindow* window) {
+	determinePhysicalDeviceSurfaceDetails(physicalDevice);
 
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(surfaceDetails.formats);
 	VkPresentModeKHR presentMode = chooseSwapPresentMode(surfaceDetails.presentModes);
@@ -414,7 +424,7 @@ void VulkanContextInfo::createSwapChainImageViews() {
 	}
 }
 
-void VulkanContextInfo::createFramebuffers(const VkImageView& depthImageView, const VkRenderPass& renderPass)
+void VulkanContextInfo::createSwapChainFramebuffers(const VkImageView& depthImageView, const VkRenderPass& renderPass)
 {
 	swapChainFramebuffers.resize(swapChainImageViews.size());
 
@@ -437,4 +447,41 @@ void VulkanContextInfo::createFramebuffers(const VkImageView& depthImageView, co
 			throw std::runtime_error("failed to create framebuffer!");
 		}
 	}
+}
+
+void VulkanContextInfo::destroySwapChainFramebuffers() {
+	for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
+	    vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
+	}
+}
+
+void VulkanContextInfo::destroySwapChainImageViews() {
+	for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+		vkDestroyImageView(device, swapChainImageViews[i], nullptr);
+	}
+}
+
+void VulkanContextInfo::destroySwapChain() {
+	vkDestroySwapchainKHR(device, swapChain, nullptr);
+}
+
+void VulkanContextInfo::destroyCommandPools() {
+	for (int i = 0; i < graphicsCommandPools.size(); ++i) {
+		vkDestroyCommandPool(device, graphicsCommandPools[i], nullptr);
+	}
+	for (int i = 0; i < computeCommandPools.size(); ++i) {
+		vkDestroyCommandPool(device, computeCommandPools[i], nullptr);
+	}
+}
+
+void VulkanContextInfo::destroyDevice() {
+	vkDestroyDevice(device, nullptr);
+}
+
+void VulkanContextInfo::destroySurface() {
+	vkDestroySurfaceKHR(instance, surface, nullptr);
+}
+
+void VulkanContextInfo::destroyInstance() {
+	vkDestroyInstance(instance, nullptr);
 }

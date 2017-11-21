@@ -6,6 +6,7 @@
 #include <sstream>
 #include <string>
 
+VulkanDescriptor::VulkanDescriptor() {}
 
 VulkanDescriptor::VulkanDescriptor(const VulkanContextInfo& contextInfo) {
 	createDescriptorSetLayout(contextInfo);
@@ -78,7 +79,6 @@ void VulkanDescriptor::createDescriptorSet(const VulkanContextInfo& contextInfo,
 	bufferInfo.buffer = uniformBuffer;
 	bufferInfo.offset = 0;
 	bufferInfo.range = sizeofUBOstruct;
-	//bufferInfo.range = sizeof(UniformBufferObject);
 
 	VkDescriptorImageInfo imageInfo = {};
 	imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -104,4 +104,17 @@ void VulkanDescriptor::createDescriptorSet(const VulkanContextInfo& contextInfo,
 	descriptorWrites[1].pImageInfo = &imageInfo;
 
 	vkUpdateDescriptorSets(contextInfo.device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+}
+
+void VulkanDescriptor::destroyVulkanDescriptor(const VulkanContextInfo& contextInfo) {
+	destroyDescriptorPool(contextInfo);
+	destroyDescriptorSetLayout(contextInfo);
+}
+
+void VulkanDescriptor::destroyDescriptorPool(const VulkanContextInfo& contextInfo) {
+	vkDestroyDescriptorPool(contextInfo.device, descriptorPool, nullptr);
+}
+
+void VulkanDescriptor::destroyDescriptorSetLayout(const VulkanContextInfo& contextInfo) {
+	vkDestroyDescriptorSetLayout(contextInfo.device, descriptorSetLayout, nullptr);
 }

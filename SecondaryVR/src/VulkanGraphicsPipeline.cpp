@@ -7,6 +7,11 @@
 #include <sstream>
 #include <string>
 
+
+VulkanGraphicsPipeline::VulkanGraphicsPipeline() {
+
+}
+
 VulkanGraphicsPipeline::VulkanGraphicsPipeline(const std::vector<std::string>& shaderpaths,
 	const VulkanRenderPass& renderPass, const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts) 
 	: shaderpaths(shaderpaths)
@@ -165,4 +170,95 @@ VkShaderModule VulkanGraphicsPipeline::createShaderModule( const std::vector<cha
 	}
 
 	return shaderModule;
+}
+
+void VulkanGraphicsPipeline::createCommandBuffers(const VulkanContextInfo& contextInfo, 
+	const VulkanRenderPass& renderPass, const VkBuffer& vertexBuffer, const VkBuffer& indexBuffer, 
+	const std::vector<uint32_t>& indices, const VulkanDescriptor& descriptor)
+{
+	commandBuffers.resize(contextInfo.swapChainFramebuffers.size());
+
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = contextInfo.graphicsCommandPools[0];
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
+
+	if (vkAllocateCommandBuffers(contextInfo.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to alloc pipeline command buffers!";
+		throw std::runtime_error(ss.str());
+	}
+
+	for (size_t i = 0; i < commandBuffers.size(); i++) {
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+		vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
+
+		VkRenderPassBeginInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = renderPass.renderPass;
+		renderPassInfo.framebuffer = contextInfo.swapChainFramebuffers[i];
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
+
+		std::array<VkClearValue, 2> clearValues = {};
+		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+		clearValues[1].depthStencil = { 1.0f, 0 };
+
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassInfo.pClearValues = clearValues.data();
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+		VkBuffer vertexBuffers[] = { vertexBuffer };
+		VkDeviceSize offsets[] = { 0 };
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+
+		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptor.descriptorSet, 0, nullptr);
+
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+		vkCmdEndRenderPass(commandBuffers[i]);
+
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to record command buffer!";
+			throw std::runtime_error(ss.str());
+		}
+	}
+
+}
+
+void VulkanGraphicsPipeline::createSemaphores(const VulkanContextInfo& contextInfo) {
+	VkSemaphoreCreateInfo semaphoreInfo = {};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	if (vkCreateSemaphore(contextInfo.device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
+		vkCreateSemaphore(contextInfo.device, &semaphoreInfo, nullptr, &renderFinishedSemaphore) != VK_SUCCESS) 
+	{
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create semaphores!";
+		throw std::runtime_error(ss.str());
+	}
+}
+
+
+void VulkanGraphicsPipeline::freeCommandBuffers(const VulkanContextInfo& contextInfo) {
+	vkFreeCommandBuffers(contextInfo.device, contextInfo.graphicsCommandPools[0], static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+}
+
+void VulkanGraphicsPipeline::destroyPipeline(const VulkanContextInfo& contextInfo) {
+	vkDestroyPipeline(contextInfo.device, graphicsPipeline, nullptr);
+}
+
+void VulkanGraphicsPipeline::destroyPipelineLayout(const VulkanContextInfo& contextInfo) {
+	vkDestroyPipelineLayout(contextInfo.device, pipelineLayout, nullptr);
+}
+void VulkanGraphicsPipeline::destroyPipelineSemaphores(const VulkanContextInfo& contextInfo) {
+	vkDestroySemaphore(contextInfo.device, renderFinishedSemaphore, nullptr);
+	vkDestroySemaphore(contextInfo.device, imageAvailableSemaphore, nullptr);
 }

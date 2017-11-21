@@ -8,6 +8,7 @@
 #include <vector>
 
 
+
 //This class holds vulkan things that get created once and are used for the duration of the program
 //these things generally won't change across typical vulkan applications
 
@@ -17,6 +18,8 @@ struct PhysicalDeviceSurfaceDetails {
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
 };
+
+class VulkanImage;
 
 class VulkanContextInfo {
 public:
@@ -44,8 +47,8 @@ public:
 
 	//depth image
 	VkFormat depthFormat;
+	//VulkanImage depthImage;
 
-	const std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 
 	//instance
 	VkInstance instance;
@@ -58,9 +61,13 @@ public:
     std::vector<VkImageView> swapChainImageViews;
     std::vector<VkFramebuffer> swapChainFramebuffers;
 
+private:
+	std::vector<const char*> deviceExtensions = { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+
 public:
 
 	//TODO: make some of these private
+	VulkanContextInfo();
 	VulkanContextInfo(GLFWwindow* window);
 	~VulkanContextInfo();
 
@@ -81,6 +88,7 @@ public:
 	void acquireDeviceQueues();
 	
 	//depthstencil format determination
+	//void createDepthImage();
 	void determineDepthFormat();
 	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, 
 		const VkImageTiling tiling, const VkFormatFeatureFlags features) const;
@@ -99,6 +107,15 @@ public:
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> availablePresentModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilitie, GLFWwindow* window);
 	void createSwapChainImageViews();
-	void createFramebuffers(const VkImageView& depthImageView, const VkRenderPass& renderPass);
+	void createSwapChainFramebuffers(const VkImageView& depthImageView, const VkRenderPass& renderPass);
+
+	//cleanup
+	void destroySwapChainFramebuffers();
+	void destroySwapChainImageViews();
+	void destroySwapChain();
+	void destroyCommandPools();
+	void destroyDevice();
+	void destroySurface();
+	void destroyInstance();
 };
 

@@ -21,8 +21,10 @@ const std::vector< std::vector<std::string> > allShaders_DefaultPipeline =
 	forwardRender_shaders,
 };
 
-const std::string MODEL_PATH = "res/objects/chalet.obj";
-const std::string TEXTURE_PATH = "res/textures/chalet.jpg";
+//const std::string MODEL_PATH = "res/objects/chalet.obj";
+//const std::string TEXTURE_PATH = "res/textures/chalet.jpg";
+const std::string MODEL_PATH = "res/objects/rock/rock.obj";
+const std::string TEXTURE_PATH = "res/objects/rock/rock.png";
 
 const std::vector<const char*> validationLayers = {
     "VK_LAYER_LUNARG_standard_validation"

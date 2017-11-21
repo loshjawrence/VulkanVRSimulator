@@ -21,8 +21,12 @@ public:
 	
 
 public:
+	VulkanRenderPass();
 	VulkanRenderPass(const VulkanContextInfo& contextInfo);
 	~VulkanRenderPass();
 	void createRenderPass(const VulkanContextInfo& contextInfo);
+
+	//cleanup
+	void destroyRenderPass(const VulkanContextInfo& contextInfo);
 };
 

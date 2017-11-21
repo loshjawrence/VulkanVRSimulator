@@ -5,6 +5,8 @@
 #include <sstream>
 #include <string>
 
+VulkanRenderPass::VulkanRenderPass() {}
+
 VulkanRenderPass::VulkanRenderPass(const VulkanContextInfo& contextInfo) {
 	createRenderPass(contextInfo);
 }
@@ -70,4 +72,8 @@ void VulkanRenderPass::createRenderPass(const VulkanContextInfo& contextInfo) {
 		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create render pass!";
 		throw std::runtime_error(ss.str());
 	}
+}
+
+void VulkanRenderPass::destroyRenderPass(const VulkanContextInfo& contextInfo) {
+	vkDestroyRenderPass(contextInfo.device, renderPass, nullptr);
 }

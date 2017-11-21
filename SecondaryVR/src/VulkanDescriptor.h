@@ -34,11 +34,16 @@ public:
 
 
 public:
+	VulkanDescriptor();
 	VulkanDescriptor(const VulkanContextInfo& contextInfo);
 	~VulkanDescriptor();
 	void createDescriptorSetLayout(const VulkanContextInfo& contextInfo);
 	void createDescriptorPool(const VulkanContextInfo& contextInfo);
 	void createDescriptorSet(const VulkanContextInfo& contextInfo, const VkBuffer& UBO,
 		const int sizeofUBOstruct, const VkImageView& imageView, const VkSampler& sampler);
+
+	void destroyVulkanDescriptor(const VulkanContextInfo& contextInfo);
+	void destroyDescriptorPool(const VulkanContextInfo& contextInfo);
+	void destroyDescriptorSetLayout(const VulkanContextInfo& contextInfo);
 };
 

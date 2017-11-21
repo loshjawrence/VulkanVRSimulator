@@ -20,14 +20,23 @@
 
 
 //TODO: make base class and subclasses
+//each material (different set of shaders) will need an instance of this pipeline
+//make a post process class since it's setup will be different than a forward render pass
 
 class VulkanGraphicsPipeline {
 public:
-	const std::vector<std::string>& shaderpaths;
+	std::vector<std::string> shaderpaths;
 	VkPipeline graphicsPipeline;
-	VkPipeline pipelineLayout;
+	VkPipelineLayout pipelineLayout;
+
+	std::vector<VkCommandBuffer> commandBuffers;
+
+	VkSemaphore imageAvailableSemaphore;
+	VkSemaphore renderFinishedSemaphore;
+
 
 public:
+	VulkanGraphicsPipeline();
 	VulkanGraphicsPipeline(const std::vector<std::string>& shaderspaths, const VulkanRenderPass& renderPass,
 		const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts);
 
@@ -37,5 +46,17 @@ public:
 		const VkDescriptorSetLayout* setLayouts);
 
 	VkShaderModule createShaderModule(const std::vector<char>& code, const VulkanContextInfo& contextInfo) const;
+
+	void VulkanGraphicsPipeline::createCommandBuffers(const VulkanContextInfo& contextInfo,
+		const VulkanRenderPass& renderPass, const VkBuffer& vertexBuffer, const VkBuffer& indexBuffer,
+		const std::vector<uint32_t>& indices, const VulkanDescriptor& descriptor);
+
+	void createSemaphores(const VulkanContextInfo& contextInfo);
+
+	//cleanup
+	void freeCommandBuffers(const VulkanContextInfo& contextInfo);
+	void destroyPipeline(const VulkanContextInfo& contextInfo);
+	void destroyPipelineLayout(const VulkanContextInfo& contextInfo);
+	void destroyPipelineSemaphores(const VulkanContextInfo& contextInfo);
 };
 

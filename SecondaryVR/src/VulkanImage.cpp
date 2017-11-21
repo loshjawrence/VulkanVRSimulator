@@ -17,6 +17,10 @@ bool hasStencilComponent(VkFormat format) {
 	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
+VulkanImage::VulkanImage() {
+
+}
+
 VulkanImage::VulkanImage(const IMAGETYPE& imagetype, const VkExtent2D& extent, const VkFormat& format,
 	const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool, std::string& filepath)
 	: extent(extent), format(format), imagetype(imagetype), filepath(filepath)
@@ -30,6 +34,19 @@ VulkanImage::VulkanImage(const IMAGETYPE& imagetype, const VkExtent2D& extent, c
 
 
 VulkanImage::~VulkanImage() {
+}
+
+void VulkanImage::operator=(const VulkanImage& rightside) {
+	extent			= rightside.extent;
+	format 			= rightside.format;
+	image			= rightside.image;
+	imageView		= rightside.imageView;
+	imageMemory		= rightside.imageMemory;
+	imagetype		= rightside.imagetype;
+	filepath		= rightside.filepath;
+	sampler			= rightside.sampler;
+
+	//no need for cascading assigment so no need to return *this
 }
 
 void VulkanImage::createDepthImage(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool) {
@@ -255,4 +272,27 @@ VkImageView VulkanImage::createImageView(const VkImage& image, const VkFormat& f
 		throw std::runtime_error(ss.str());
 	}
 	return imageView;
+}
+
+void VulkanImage::destroyVulkanImage(const VulkanContextInfo& contextInfo) {
+	destroySampler(contextInfo);
+	destroyImageView(contextInfo);
+	destroyImage(contextInfo);
+	destroyImageMemory(contextInfo);
+}
+
+void VulkanImage::destroySampler(const VulkanContextInfo& contextInfo) {
+	vkDestroySampler(contextInfo.device, sampler, nullptr);
+}
+
+void VulkanImage::destroyImageView(const VulkanContextInfo& contextInfo) {
+	vkDestroyImageView(contextInfo.device, imageView, nullptr);
+}
+
+void VulkanImage::destroyImage(const VulkanContextInfo& contextInfo) {
+	vkDestroyImage(contextInfo.device, image, nullptr);
+}
+
+void VulkanImage::destroyImageMemory(const VulkanContextInfo& contextInfo) {
+        vkFreeMemory(contextInfo.device, imageMemory, nullptr);
 }

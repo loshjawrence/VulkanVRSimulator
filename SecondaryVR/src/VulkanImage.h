@@ -21,17 +21,19 @@ public:
 	VkImage image;
 	VkImageView imageView;
 	VkDeviceMemory imageMemory;
-	const IMAGETYPE imagetype;
+	IMAGETYPE imagetype;
 
 	//for textures
 	std::string filepath;
 	VkSampler sampler;
 
 public:
+	VulkanImage();
 	VulkanImage(const IMAGETYPE& imagetype, const VkExtent2D& extent, const VkFormat& format,
 		const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool, std::string& filepath = std::string(""));
 	~VulkanImage();
 
+	void operator=(const VulkanImage& rightside);
 	void createDepthImage(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool);
 	void createTextureImage(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool);
 	void createImage(const VulkanContextInfo& contextInfo);
@@ -42,5 +44,14 @@ public:
 
 	static VkImageView createImageView(const VkImage& image, const VkFormat& format,
 		const VkImageAspectFlags& aspectFlags, const VkDevice& device);
+
+
+
+	//cleanup
+	void destroyVulkanImage(const VulkanContextInfo& contextInfo);
+	void destroySampler(const VulkanContextInfo& contextInfo);
+	void destroyImageView(const VulkanContextInfo& contextInfo);
+	void destroyImage(const VulkanContextInfo& contextInfo);
+	void destroyImageMemory(const VulkanContextInfo& contextInfo);
 };
 
