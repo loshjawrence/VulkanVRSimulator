@@ -109,6 +109,10 @@ public:
 	void createSwapChainImageViews();
 	void createSwapChainFramebuffers(const VkImageView& depthImageView, const VkRenderPass& renderPass);
 
+	//debug callback
+	VkResult CreateDebugReportCallbackEXT(const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, 
+		const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback);
+
 	//cleanup
 	void destroySwapChainFramebuffers();
 	void destroySwapChainImageViews();
@@ -117,5 +121,6 @@ public:
 	void destroyDevice();
 	void destroySurface();
 	void destroyInstance();
+	void DestroyDebugReportCallbackEXT(VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator);
 };
 
