@@ -58,5 +58,6 @@ public:
 	void destroyPipeline(const VulkanContextInfo& contextInfo);
 	void destroyPipelineLayout(const VulkanContextInfo& contextInfo);
 	void destroyPipelineSemaphores(const VulkanContextInfo& contextInfo);
+	void destroyVulkanPipeline(const VulkanContextInfo& contextInfo);
 };
 

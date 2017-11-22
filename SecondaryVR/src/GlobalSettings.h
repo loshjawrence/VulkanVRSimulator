@@ -8,9 +8,6 @@
 #include <vector>
 #include <string>
 
-const int WIDTH = 800;
-const int HEIGHT = 600;
-
 const std::string VERT_SHADER_PATH = "src/shaders/vert.spv";
 const std::string FRAG_SHADER_PATH = "src/shaders/frag.spv";
 
@@ -19,10 +16,10 @@ const std::vector< std::vector<std::string> > allShaders_DefaultPipeline =
 {
 	//subpass0 shaders
 	forwardRender_shaders,
+
+	//subpass1 shaders
 };
 
-//const std::string MODEL_PATH = "res/objects/chalet.obj";
-//const std::string TEXTURE_PATH = "res/textures/chalet.jpg";
 const std::string MODEL_PATH = "res/objects/rock/rock.obj";
 const std::string TEXTURE_PATH = "res/objects/rock/rock.png";
 

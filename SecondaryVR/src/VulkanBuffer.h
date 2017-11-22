@@ -1,13 +1,11 @@
 #pragma once
-
-
 #ifndef GLFW_INCLUDE_VULKAN
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #endif // !GLFW_INCLUDE_VULKAN
 
 #include "Vertex.h"
-#include "VulkanContextInfo.h"
+class VulkanContexInfo;
 
 
 //VkBuffer buffers are required in various places, just bundle the methods into a static class (namespaced functions)

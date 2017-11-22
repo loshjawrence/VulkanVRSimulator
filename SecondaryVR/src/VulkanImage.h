@@ -5,10 +5,11 @@
 #endif // !GLFW_INCLUDE_VULKAN
 
 
-#include "VulkanContextInfo.h"
 #include <string>
 
 //TODO: turn into base image class and subclasses
+
+class VulkanContextInfo;
 
 enum class IMAGETYPE {
 	DEPTH=0, TEXTURE=1,

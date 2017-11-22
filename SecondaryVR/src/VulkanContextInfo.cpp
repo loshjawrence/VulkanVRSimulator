@@ -1,6 +1,5 @@
 #pragma once
 #include "VulkanContextInfo.h"
-#include "VulkanImage.h"
 #include <stdexcept>
 #include <iostream>
 #include <sstream>
@@ -23,7 +22,7 @@ VulkanContextInfo::VulkanContextInfo(GLFWwindow* window) {
 	createSwapChain(window);
 	createSwapChainImageViews();
 	determineDepthFormat();
-	//createDepthImage();
+	createDepthImage();
 }
 
 
@@ -245,10 +244,10 @@ VkFormat VulkanContextInfo::findSupportedFormat(const std::vector<VkFormat>& can
 	throw std::runtime_error(ss.str());
 }
 
-//void VulkanContextInfo::createDepthImage() {
-	//determineDepthFormat();
-	//depthImage = VulkanImage(IMAGETYPE::DEPTH, swapChainExtent, depthFormat, *this, graphicsCommandPools[0]);
-//}
+void VulkanContextInfo::createDepthImage() {
+	determineDepthFormat();
+	depthImage = VulkanImage(IMAGETYPE::DEPTH, swapChainExtent, depthFormat, *this, graphicsCommandPools[0]);
+}
 
 void VulkanContextInfo::determineDepthFormat() {
 	depthFormat = findSupportedFormat(
@@ -424,14 +423,14 @@ void VulkanContextInfo::createSwapChainImageViews() {
 	}
 }
 
-void VulkanContextInfo::createSwapChainFramebuffers(const VkImageView& depthImageView, const VkRenderPass& renderPass)
+void VulkanContextInfo::createSwapChainFramebuffers(const VkRenderPass& renderPass)
 {
 	swapChainFramebuffers.resize(swapChainImageViews.size());
 
 	for (size_t i = 0; i < swapChainImageViews.size(); i++) {
 		std::array<VkImageView, 2> attachments = {
 			swapChainImageViews[i],
-			depthImageView
+			depthImage.imageView
 		};
 
 		VkFramebufferCreateInfo framebufferInfo = {};
@@ -444,9 +443,16 @@ void VulkanContextInfo::createSwapChainFramebuffers(const VkImageView& depthImag
 		framebufferInfo.layers = 1;
 
 		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapChainFramebuffers[i]) != VK_SUCCESS) {
-			throw std::runtime_error("failed to create framebuffer!");
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create framebuffer!";
+			throw std::runtime_error(ss.str());
 		}
 	}
+}
+
+void VulkanContextInfo::destroyVulkanSwapChain() {
+	destroySwapChainFramebuffers();
+	destroySwapChainImageViews();
+	destroySwapChain();
 }
 
 void VulkanContextInfo::destroySwapChainFramebuffers() {
@@ -486,18 +492,3 @@ void VulkanContextInfo::destroyInstance() {
 	vkDestroyInstance(instance, nullptr);
 }
 
-VkResult VulkanContextInfo::CreateDebugReportCallbackEXT(const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
-    auto func = (PFN_vkCreateDebugReportCallbackEXT) vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT");
-    if (func != nullptr) {
-        return func(instance, pCreateInfo, pAllocator, pCallback);
-    } else {
-        return VK_ERROR_EXTENSION_NOT_PRESENT;
-    }
-}
-
-void VulkanContextInfo::DestroyDebugReportCallbackEXT(VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator) {
-    auto func = (PFN_vkDestroyDebugReportCallbackEXT) vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT");
-    if (func != nullptr) {
-        func(instance, callback, pAllocator);
-    }
-}

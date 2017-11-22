@@ -275,7 +275,9 @@ VkImageView VulkanImage::createImageView(const VkImage& image, const VkFormat& f
 }
 
 void VulkanImage::destroyVulkanImage(const VulkanContextInfo& contextInfo) {
-	destroySampler(contextInfo);
+	if (imagetype == IMAGETYPE::TEXTURE) {
+		destroySampler(contextInfo);
+	}
 	destroyImageView(contextInfo);
 	destroyImage(contextInfo);
 	destroyImageMemory(contextInfo);

@@ -246,6 +246,11 @@ void VulkanGraphicsPipeline::createSemaphores(const VulkanContextInfo& contextIn
 	}
 }
 
+void VulkanGraphicsPipeline::destroyVulkanPipeline(const VulkanContextInfo& contextInfo) {
+	freeCommandBuffers(contextInfo);
+	destroyPipeline(contextInfo);
+	destroyPipelineLayout(contextInfo);
+}
 
 void VulkanGraphicsPipeline::freeCommandBuffers(const VulkanContextInfo& contextInfo) {
 	vkFreeCommandBuffers(contextInfo.device, contextInfo.graphicsCommandPools[0], static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
@@ -258,7 +263,9 @@ void VulkanGraphicsPipeline::destroyPipeline(const VulkanContextInfo& contextInf
 void VulkanGraphicsPipeline::destroyPipelineLayout(const VulkanContextInfo& contextInfo) {
 	vkDestroyPipelineLayout(contextInfo.device, pipelineLayout, nullptr);
 }
+
 void VulkanGraphicsPipeline::destroyPipelineSemaphores(const VulkanContextInfo& contextInfo) {
 	vkDestroySemaphore(contextInfo.device, renderFinishedSemaphore, nullptr);
 	vkDestroySemaphore(contextInfo.device, imageAvailableSemaphore, nullptr);
 }
+

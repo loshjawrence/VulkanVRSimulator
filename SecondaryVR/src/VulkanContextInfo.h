@@ -6,20 +6,16 @@
 
 #include "GlobalSettings.h"
 #include <vector>
-
-
+#include "VulkanImage.h"
 
 //This class holds vulkan things that get created once and are used for the duration of the program
 //these things generally won't change across typical vulkan applications
-
 
 struct PhysicalDeviceSurfaceDetails {
     VkSurfaceCapabilitiesKHR capabilities;
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
 };
-
-class VulkanImage;
 
 class VulkanContextInfo {
 public:
@@ -45,9 +41,9 @@ public:
     VkSurfaceKHR surface;
 	PhysicalDeviceSurfaceDetails surfaceDetails;
 
-	//depth image
+	//depth image 
 	VkFormat depthFormat;
-	//VulkanImage depthImage;
+	VulkanImage depthImage;
 
 
 	//instance
@@ -88,7 +84,7 @@ public:
 	void acquireDeviceQueues();
 	
 	//depthstencil format determination
-	//void createDepthImage();
+	void createDepthImage();
 	void determineDepthFormat();
 	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, 
 		const VkImageTiling tiling, const VkFormatFeatureFlags features) const;
@@ -107,13 +103,11 @@ public:
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR> availablePresentModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilitie, GLFWwindow* window);
 	void createSwapChainImageViews();
-	void createSwapChainFramebuffers(const VkImageView& depthImageView, const VkRenderPass& renderPass);
+	void createSwapChainFramebuffers(const VkRenderPass& renderPass);
 
-	//debug callback
-	VkResult CreateDebugReportCallbackEXT(const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, 
-		const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback);
 
 	//cleanup
+	void destroyVulkanSwapChain();
 	void destroySwapChainFramebuffers();
 	void destroySwapChainImageViews();
 	void destroySwapChain();
@@ -121,6 +115,5 @@ public:
 	void destroyDevice();
 	void destroySurface();
 	void destroyInstance();
-	void DestroyDebugReportCallbackEXT(VkDebugReportCallbackEXT callback, const VkAllocationCallbacks* pAllocator);
 };
 
