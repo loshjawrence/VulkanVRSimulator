@@ -102,4 +102,13 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <None Include="src\shaders\forward.vert" />
+    <None Include="src\shaders\forwardAll.frag" />
+    <None Include="src\shaders\forwardDiffuse.frag" />
+    <None Include="src\shaders\forwardHeight.frag" />
+    <None Include="src\shaders\forwardNor.frag" />
+    <None Include="src\shaders\forwardSpec.frag" />
+    <None Include="src\shaders\forwardNoTex.frag" />
+  </ItemGroup>
 </Project>

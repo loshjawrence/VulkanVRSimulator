@@ -71,6 +71,7 @@ private:
 	//Vulkan components
 	VulkanContextInfo contextInfo;
 	VulkanGraphicsPipeline forwardPipeline;
+	std::vector<VulkanGraphicsPipeline> forwardPipelines;
 	VulkanRenderPass forwardRenderPass;
 	VulkanDescriptor forwardDescriptor;
 

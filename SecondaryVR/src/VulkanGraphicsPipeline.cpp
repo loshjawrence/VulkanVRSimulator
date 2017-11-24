@@ -364,7 +364,7 @@ void VulkanGraphicsPipeline::beginRecording(const uint32_t imageIndex, const Vul
 }
 
 
-void VulkanGraphicsPipeline::endRecording(const uint32_t imageIndex) {
+bool VulkanGraphicsPipeline::endRecording(const uint32_t imageIndex) {
 	if (recording) {
 		recording = false;
 		vkCmdEndRenderPass(commandBuffers[imageIndex]);
@@ -373,7 +373,9 @@ void VulkanGraphicsPipeline::endRecording(const uint32_t imageIndex) {
 			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to record command buffer!";
 			throw std::runtime_error(ss.str());
 		}
+		return true;
 	}
+	return false;
 }
 void VulkanGraphicsPipeline::createSemaphores(const VulkanContextInfo& contextInfo) {
 	VkSemaphoreCreateInfo semaphoreInfo = {};

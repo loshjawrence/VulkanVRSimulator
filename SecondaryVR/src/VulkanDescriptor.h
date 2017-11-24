@@ -16,6 +16,7 @@
 enum class DescriptorType {
 	HAS_NONE = 0, HAS_DIFFUSE, HAS_NOR, HAS_SPEC, HAS_HEIGHT, HAS_ALL
 };
+
 class Mesh;
 class VulkanDescriptor {
 public:

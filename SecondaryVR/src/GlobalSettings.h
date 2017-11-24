@@ -12,16 +12,31 @@
 #include <string>
 
 
-const std::string VERT_SHADER_PATH = "src/shaders/vert.spv";
-const std::string FRAG_SHADER_PATH = "src/shaders/frag.spv";
-
-const std::vector<std::string> forwardRender_shaders = { VERT_SHADER_PATH, FRAG_SHADER_PATH };
 const std::vector< std::vector<std::string> > allShaders_ForwardPipeline =
 {
-	//subpass0 shaders
-	forwardRender_shaders,
+	//No Tex shaders
+	{"src/shaders/forward.vert.spv", 
+	 "src/shaders/forwardNoTex.frag.spv"},
 
-	//subpass1 shaders
+	//forwardDiffuse shaders
+	{"src/shaders/forward.vert.spv", 
+	 "src/shaders/forwardDiffuse.frag.spv"},
+
+	//forwardNor shaders
+	{"src/shaders/forward.vert.spv", 
+	 "src/shaders/forwardNor.frag.spv"},
+
+	//forwardSpec shaders
+	{"src/shaders/forward.vert.spv", 
+	 "src/shaders/forwardSpec.frag.spv"},
+
+	//forwardHeight shaders
+	{"src/shaders/forward.vert.spv", 
+	 "src/shaders/forwardHeight.frag.spv"},
+
+	//forwardAll shaders
+	{"src/shaders/forward.vert.spv", 
+	 "src/shaders/forwardAll.frag.spv"},
 };
 //std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene;
 //const std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene =

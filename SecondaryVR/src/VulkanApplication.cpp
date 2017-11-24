@@ -44,8 +44,8 @@ void VulkanApplication::loadModels() {
 		const float x = rng.nextUInt(15);
 		const float y = rng.nextUInt(15);
 		const float z = rng.nextUInt(15);
-		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-		//defaultScene[i] = { std::string("res/objects/cube.obj"), 1,
+		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+		defaultScene[i] = { std::string("res/objects/cube.obj"), 1,
 			glm::translate(glm::mat4(1.f),glm::vec3(x, y, z)) };
 	}
 
@@ -64,16 +64,32 @@ void VulkanApplication::initVulkan() {
 	//context info holds vulkan things like instance, phys and logical device, swap chain info, depthImage, command pools and queues
 	contextInfo = VulkanContextInfo(window);
 	VulkanApplication::setupDebugCallback();
+	
+	//describes input and output attachments and how subpasses relate to one another
 	forwardRenderPass = VulkanRenderPass(contextInfo);
+
+	//really just for initializing VulkanDescriptor::layoutTypes 
 	forwardDescriptor = VulkanDescriptor(contextInfo);
 
 	//the cookbook says framebuffers represent image subresources that correspond to renderpass attachments(input attachments and render targets)
 	//add a framebuffer component to VulkanRenderPass?
 	//keep swapchain related things with the swapchain
-	contextInfo.createSwapChainFramebuffers(forwardRenderPass.renderPass);
-	forwardPipeline = VulkanGraphicsPipeline(allShaders_ForwardPipeline[0],
-		forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[1]));
 
+	contextInfo.createSwapChainFramebuffers(forwardRenderPass.renderPass);
+
+	//forwardPipeline = VulkanGraphicsPipeline(allShaders_ForwardPipeline[1],
+	//	forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[1]));
+	for (int i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
+		if (i >= 2) {//height
+			//TODO: make the pack of shader info include descriptor type and make a descriptor type to layoutType conversion function
+			forwardPipelines.push_back(VulkanGraphicsPipeline(allShaders_ForwardPipeline[i],
+				forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[i - 1])));
+		} else {
+			forwardPipelines.push_back(VulkanGraphicsPipeline(allShaders_ForwardPipeline[i],
+				forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[i])));
+		}
+
+	}
 
 	VulkanBuffer::createUniformBuffer(contextInfo, sizeof(UniformBufferObject), uniformBuffer, uniformBufferMemory);
 
@@ -95,10 +111,14 @@ void VulkanApplication::drawFrame() {
 		throw std::runtime_error(ss.str());
 	}
 
-	std::vector<VkSemaphore> waitSemaphores = { imageAvailableSemaphore };
+	//std::vector<VkSemaphore> waitSemaphores = { imageAvailableSemaphore };
 	//finished signals for each stage, successive stages need to wait on the previous finish
-	std::vector<VkSemaphore> signalSemaphores = { forwardRenderFinishedSemaphore };
+	//std::vector<VkSemaphore> signalSemaphores = { forwardRenderFinishedSemaphore };
 
+	//NEW
+	std::vector<VkSemaphore> waitSemaphores;
+	std::vector<VkSemaphore> signalSemaphores;
+	std::vector<VkPipelineStageFlags> waitStages;
 	////////////////
 	//// RECORD ////
 	////////////////
@@ -107,29 +127,56 @@ void VulkanApplication::drawFrame() {
 	//record command buffers for visible objects
 		//updateUniformBuffer(model);//test against push constant
 		for (Mesh& mesh : model.mMeshes) {
-			//select pipeline for the descriptor type
-			uint32_t numsamplers = mesh.descriptor.numImageSamplers;
-			forwardPipeline.recordCommandBufferTEST(imageIndex, contextInfo, forwardRenderPass, model, mesh, time);
+			//forwardPipeline.recordCommandBufferTEST(imageIndex, contextInfo, forwardRenderPass, model, mesh, time);
+
+			//NEW
+			forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferTEST(imageIndex, contextInfo,
+				forwardRenderPass, model, mesh, time);
 		}
 	}
-	forwardPipeline.endRecording(imageIndex);
+	//forwardPipeline.endRecording(imageIndex);
+
+	//NEW
+	std::vector<VkCommandBuffer> forwardCommandBuffers;
+	for (int i = 0; i < forwardPipelines.size(); ++i) {
+		if (forwardPipelines[i].endRecording(imageIndex)) {
+			forwardCommandBuffers.push_back(forwardPipelines[i].commandBuffers[imageIndex]);
+			waitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+			waitSemaphores.push_back(imageAvailableSemaphore);
+			signalSemaphores.push_back(forwardPipelines[i].renderFinishedSemaphore);
+		}
+	}
 
 	//forwardPipeline.recordCommandBuffer(imageIndex, contextInfo, forwardRenderPass, vertexBuffer, indexBuffer, indices, models[0].mMeshes[0].descriptor);
 	/////////////////
 	//// SUBMIT /////
 	/////////////////
+	//VkSubmitInfo submitInfo = {};
+	//submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	//VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	//submitInfo.waitSemaphoreCount = 1;
+	//submitInfo.pWaitSemaphores = &waitSemaphores[0];
+	//submitInfo.pWaitDstStageMask = waitStages;
+
+	//submitInfo.commandBufferCount = 1;
+	//submitInfo.pCommandBuffers = &forwardPipeline.commandBuffers[imageIndex];
+
+	//submitInfo.signalSemaphoreCount = 1;
+	//submitInfo.pSignalSemaphores = &signalSemaphores[0];
+
+	//NEW
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.waitSemaphoreCount = waitSemaphores.size();
 	submitInfo.pWaitSemaphores = &waitSemaphores[0];
-	submitInfo.pWaitDstStageMask = waitStages;
+	submitInfo.pWaitDstStageMask = &waitStages[0];
 
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &forwardPipeline.commandBuffers[imageIndex];
+	submitInfo.commandBufferCount = forwardCommandBuffers.size();
+	submitInfo.pCommandBuffers = &forwardCommandBuffers[0];
 
-	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.signalSemaphoreCount = signalSemaphores.size();
 	submitInfo.pSignalSemaphores = &signalSemaphores[0];
 
 	if (vkQueueSubmit(contextInfo.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
@@ -140,8 +187,12 @@ void VulkanApplication::drawFrame() {
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &signalSemaphores.back();
+	//presentInfo.waitSemaphoreCount = 1;
+	//presentInfo.pWaitSemaphores = &signalSemaphores.back();
+
+	//NEW
+	presentInfo.waitSemaphoreCount = signalSemaphores.size();
+	presentInfo.pWaitSemaphores = &signalSemaphores[0];
 
 	VkSwapchainKHR swapChains[] = { contextInfo.swapChain };
 	presentInfo.swapchainCount = 1;

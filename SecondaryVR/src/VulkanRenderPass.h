@@ -6,6 +6,7 @@
 #endif // !GLFW_INCLUDE_VULKAN
 
 #include "VulkanContextInfo.h"
+#include "VulkanDescriptor.h"
 
 
 //"A pipeline is always built relative to a specific subpass of a specific render pass. It cannot be used in any other subpass.

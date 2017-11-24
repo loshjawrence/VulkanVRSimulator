@@ -80,6 +80,10 @@
       <AdditionalLibraryDirectories>$(SolutionDir)SecondaryVR\dependencies\GLFW\lib-vc2015;$(SolutionDir)SecondaryVR\dependencies\assimp\lib\x86;C:\VulkanSDK\1.0.65.0\Lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;assimp-vc140-mt.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -108,6 +112,10 @@
       <AdditionalLibraryDirectories>$(SolutionDir)SecondaryVR\dependencies\GLFW\lib-vc2015;$(SolutionDir)SecondaryVR\dependencies\assimp\lib\x86;C:\VulkanSDK\1.0.65.0\Lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;assimp-vc140-mt.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -156,6 +164,15 @@
     <ClInclude Include="src\VulkanImage.h" />
     <ClInclude Include="src\VulkanBuffer.h" />
     <ClInclude Include="src\VulkanApplication.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="src\shaders\forward.vert" />
+    <None Include="src\shaders\forwardAll.frag" />
+    <None Include="src\shaders\forwardDiffuse.frag" />
+    <None Include="src\shaders\forwardHeight.frag" />
+    <None Include="src\shaders\forwardNor.frag" />
+    <None Include="src\shaders\forwardNoTex.frag" />
+    <None Include="src\shaders\forwardSpec.frag" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

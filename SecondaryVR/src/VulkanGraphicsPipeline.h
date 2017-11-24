@@ -60,9 +60,9 @@ public:
 
 	VkShaderModule createShaderModule(const std::vector<char>& code, const VulkanContextInfo& contextInfo) const;
 
-	void VulkanGraphicsPipeline::createCommandBuffers(const VulkanContextInfo& contextInfo,
-		const VulkanRenderPass& renderPass, const VkBuffer& vertexBuffer, const VkBuffer& indexBuffer,
-		const std::vector<uint32_t>& indices, const VulkanDescriptor& descriptor);
+	//void VulkanGraphicsPipeline::createCommandBuffers(const VulkanContextInfo& contextInfo,
+	//	const VulkanRenderPass& renderPass, const VkBuffer& vertexBuffer, const VkBuffer& indexBuffer,
+	//	const std::vector<uint32_t>& indices, const VulkanDescriptor& descriptor);
 
 	void VulkanGraphicsPipeline::recordCommandBuffer(const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
 		const VulkanRenderPass& renderPass, const VkBuffer& vertexBuffer, const VkBuffer& indexBuffer,
@@ -74,7 +74,7 @@ public:
 	void VulkanGraphicsPipeline::recordCommandBufferTEST(const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
 		const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const float time);
 	void beginRecording(const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass);
-	void endRecording(const uint32_t imageIndex);
+	bool endRecording(const uint32_t imageIndex);
 	void createSemaphores(const VulkanContextInfo& contextInfo);
 
 	//cleanup
