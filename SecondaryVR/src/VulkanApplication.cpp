@@ -37,59 +37,15 @@ std::string convertFloatToString(double number)
 	return ss.str();
 }
 
-
-VulkanApplication::VulkanApplication() {
-}
-
-
-VulkanApplication::~VulkanApplication() {
-}
-
-void VulkanApplication::run() {
-	initVulkan();
-	mainLoop();
-	cleanup();
-}
-
-void VulkanApplication::initWindow() {
-	if (!glfwInit()) {
-		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": glfwInit() failed!";
-		throw std::runtime_error(ss.str());
-	}
-
-	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-	window = glfwCreateWindow(camera.width, camera.height, "VulkanVR", nullptr, nullptr);
-	if (!window) {
-		glfwTerminate();
-		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create glfw window!";
-		throw std::runtime_error(ss.str());
-	}
-
-	/* Make the window's context current */
-	glfwMakeContextCurrent(window);
-
-	//tell glfw to capture mouse, for FPS camera
-	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-	//set callbacks and window user pointer
-	glfwSetWindowUserPointer(window, this);
-	glfwSetWindowSizeCallback(window, VulkanApplication::onWindowResized);
-	glfwSetCursorPosCallback(window, VulkanApplication::GLFW_MousePosCallback);
-	glfwSetMouseButtonCallback(window, VulkanApplication::GLFW_MouseButtonCallback);
-	glfwSetKeyCallback(window, VulkanApplication::GLFW_KeyCallback);
-	glfwSetScrollCallback(window, VulkanApplication::GLFW_ScrollCallback);
-}
-
-
 void VulkanApplication::loadModels() {
-	const int num = 1700;
+	const int num = 10;
 	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
 	for (int i = 0; i < num; ++i) {
 		const float x = rng.nextUInt(15);
 		const float y = rng.nextUInt(15);
 		const float z = rng.nextUInt(15);
 		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+		//defaultScene[i] = { std::string("res/objects/cube.obj"), 1,
 			glm::translate(glm::mat4(1.f),glm::vec3(x, y, z)) };
 	}
 
@@ -126,6 +82,126 @@ void VulkanApplication::initVulkan() {
 	createSemaphores();
 }
 
+
+void VulkanApplication::drawFrame() {
+	uint32_t imageIndex;
+	VkResult result = vkAcquireNextImageKHR(contextInfo.device, contextInfo.swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+		recreateSwapChain();
+		return;
+	} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to acquire swap chain image!";
+		throw std::runtime_error(ss.str());
+	}
+
+	std::vector<VkSemaphore> waitSemaphores = { imageAvailableSemaphore };
+	//finished signals for each stage, successive stages need to wait on the previous finish
+	std::vector<VkSemaphore> signalSemaphores = { forwardRenderFinishedSemaphore };
+
+	////////////////
+	//// RECORD ////
+	////////////////
+	updateUniformBuffer();
+	for (Model& model : models) {
+	//record command buffers for visible objects
+		//updateUniformBuffer(model);//test against push constant
+		for (Mesh& mesh : model.mMeshes) {
+			//select pipeline for the descriptor type
+			uint32_t numsamplers = mesh.descriptor.numImageSamplers;
+			forwardPipeline.recordCommandBufferTEST(imageIndex, contextInfo, forwardRenderPass, model, mesh, time);
+		}
+	}
+	forwardPipeline.endRecording(imageIndex);
+
+	//forwardPipeline.recordCommandBuffer(imageIndex, contextInfo, forwardRenderPass, vertexBuffer, indexBuffer, indices, models[0].mMeshes[0].descriptor);
+	/////////////////
+	//// SUBMIT /////
+	/////////////////
+	VkSubmitInfo submitInfo = {};
+	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	submitInfo.waitSemaphoreCount = 1;
+	submitInfo.pWaitSemaphores = &waitSemaphores[0];
+	submitInfo.pWaitDstStageMask = waitStages;
+
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &forwardPipeline.commandBuffers[imageIndex];
+
+	submitInfo.signalSemaphoreCount = 1;
+	submitInfo.pSignalSemaphores = &signalSemaphores[0];
+
+	if (vkQueueSubmit(contextInfo.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to submit draw command buffer!";
+		throw std::runtime_error(ss.str());
+	}
+
+	VkPresentInfoKHR presentInfo = {};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &signalSemaphores.back();
+
+	VkSwapchainKHR swapChains[] = { contextInfo.swapChain };
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = swapChains;
+
+	presentInfo.pImageIndices = &imageIndex;
+
+	vkQueueWaitIdle(contextInfo.presentQueue);
+	result = vkQueuePresentKHR(contextInfo.presentQueue, &presentInfo);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		recreateSwapChain();
+	} else if (result != VK_SUCCESS) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to present swap chain image!";
+		throw std::runtime_error(ss.str());
+	}
+}
+
+
+void VulkanApplication::createSemaphores() {
+	VkSemaphoreCreateInfo semaphoreInfo = {};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	if (vkCreateSemaphore(contextInfo.device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
+		vkCreateSemaphore(contextInfo.device, &semaphoreInfo, nullptr, &forwardRenderFinishedSemaphore) != VK_SUCCESS)
+	{
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create semaphores!";
+		throw std::runtime_error(ss.str());
+	}
+}
+
+void VulkanApplication::updateUniformBuffer() {
+	UniformBufferObject ubo = {};
+	//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.view = camera.view;
+	ubo.proj = camera.proj;
+	ubo.proj[1][1] *= -1;//need for correct z-buffer order
+
+	void* data;
+	vkMapMemory(contextInfo.device, uniformBufferMemory, 0, sizeof(ubo), 0, &data);
+	memcpy(data, &ubo, sizeof(ubo));
+	vkUnmapMemory(contextInfo.device, uniformBufferMemory);
+}
+
+void VulkanApplication::updateUniformBuffer(const Model& model) {
+	UniformBufferObject ubo = {};
+	ubo.model = glm::rotate(model.modelMatrix, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.view = camera.view;
+	ubo.proj = camera.proj;
+	ubo.proj[1][1] *= -1;//need for correct z-buffer order
+
+	void* data;
+	vkMapMemory(contextInfo.device, model.uniformBufferMemory, 0, sizeof(ubo), 0, &data);
+	memcpy(data, &ubo, sizeof(ubo));
+	vkUnmapMemory(contextInfo.device, model.uniformBufferMemory);
+}
+
+void VulkanApplication::recordAndSubmitForwardRendering(const uint32_t imageIndex) {
+}
+
 void VulkanApplication::mainLoop() {
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -150,6 +226,12 @@ void VulkanApplication::updateFPS() {
 
 void VulkanApplication::processInputAndUpdateFPS() {
 	// ask glfw for keys pressed
+	static auto startTime = std::chrono::high_resolution_clock::now();
+
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	time = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
+
+
 		float currentFrame = glfwGetTime();
 		deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
@@ -244,137 +326,48 @@ void VulkanApplication::setupDebugCallback() {
 	}
 }
 
-
-void VulkanApplication::updateUniformBuffer() {
-	static auto startTime = std::chrono::high_resolution_clock::now();
-
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	time = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
-
-	UniformBufferObject ubo = {};
-	//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = camera.view;
-	ubo.proj = camera.proj;
-	ubo.proj[1][1] *= -1;//need for correct z-buffer order
-
-	void* data;
-	vkMapMemory(contextInfo.device, uniformBufferMemory, 0, sizeof(ubo), 0, &data);
-	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(contextInfo.device, uniformBufferMemory);
-}
-
-void VulkanApplication::updateUniformBuffer(const Model& model) {
-	static auto startTime = std::chrono::high_resolution_clock::now();
-
-	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
-
-
-	UniformBufferObject ubo = {};
-	ubo.model = glm::rotate(model.modelMatrix, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = camera.view;
-	ubo.proj = camera.proj;
-	ubo.proj[1][1] *= -1;//need for correct z-buffer order
-
-	void* data;
-	vkMapMemory(contextInfo.device, model.uniformBufferMemory, 0, sizeof(ubo), 0, &data);
-	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(contextInfo.device, model.uniformBufferMemory);
+VulkanApplication::VulkanApplication() {
 }
 
 
-void VulkanApplication::drawFrame() {
-	uint32_t imageIndex;
-	VkResult result = vkAcquireNextImageKHR(contextInfo.device, contextInfo.swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+VulkanApplication::~VulkanApplication() {
+}
 
-	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-		recreateSwapChain();
-		return;
-	} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to acquire swap chain image!";
+void VulkanApplication::run() {
+	initVulkan();
+	mainLoop();
+	cleanup();
+}
+
+void VulkanApplication::initWindow() {
+	if (!glfwInit()) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": glfwInit() failed!";
 		throw std::runtime_error(ss.str());
 	}
 
-	std::vector<VkSemaphore> waitSemaphores = { imageAvailableSemaphore };
-	//finished signals for each stage, successive stages need to wait on the previous finish
-	std::vector<VkSemaphore> signalSemaphores = { forwardRenderFinishedSemaphore };
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	////////////////
-	//// RECORD ////
-	////////////////
-	updateUniformBuffer();
-	for (Model& model : models) {
-	//record command buffers for visible objects
-		//updateUniformBuffer(model);//test against push constant
-		for (Mesh& mesh : model.mMeshes) {
-			//select pipeline for the descriptor type
-			uint32_t numsamplers = mesh.descriptor.numImageSamplers;
-			forwardPipeline.recordCommandBufferTEST(imageIndex, contextInfo, forwardRenderPass, model, mesh, time);
-		}
-	}
-	forwardPipeline.endRecording(imageIndex);
-
-	//forwardPipeline.recordCommandBuffer(imageIndex, contextInfo, forwardRenderPass, vertexBuffer, indexBuffer, indices, models[0].mMeshes[0].descriptor);
-	/////////////////
-	//// SUBMIT /////
-	/////////////////
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = &waitSemaphores[0];
-	submitInfo.pWaitDstStageMask = waitStages;
-
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &forwardPipeline.commandBuffers[imageIndex];
-
-	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = &signalSemaphores[0];
-
-	if (vkQueueSubmit(contextInfo.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
-		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to submit draw command buffer!";
+	window = glfwCreateWindow(camera.width, camera.height, "VulkanVR", nullptr, nullptr);
+	if (!window) {
+		glfwTerminate();
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create glfw window!";
 		throw std::runtime_error(ss.str());
 	}
 
-	VkPresentInfoKHR presentInfo = {};
-	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	/* Make the window's context current */
+	glfwMakeContextCurrent(window);
 
-	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = &signalSemaphores.back();
+	//tell glfw to capture mouse, for FPS camera
+	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-	VkSwapchainKHR swapChains[] = { contextInfo.swapChain };
-	presentInfo.swapchainCount = 1;
-	presentInfo.pSwapchains = swapChains;
-
-	presentInfo.pImageIndices = &imageIndex;
-
-	vkQueueWaitIdle(contextInfo.presentQueue);
-	result = vkQueuePresentKHR(contextInfo.presentQueue, &presentInfo);
-
-	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-		recreateSwapChain();
-	} else if (result != VK_SUCCESS) {
-		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to present swap chain image!";
-		throw std::runtime_error(ss.str());
-	}
+	//set callbacks and window user pointer
+	glfwSetWindowUserPointer(window, this);
+	glfwSetWindowSizeCallback(window, VulkanApplication::onWindowResized);
+	glfwSetCursorPosCallback(window, VulkanApplication::GLFW_MousePosCallback);
+	glfwSetMouseButtonCallback(window, VulkanApplication::GLFW_MouseButtonCallback);
+	glfwSetKeyCallback(window, VulkanApplication::GLFW_KeyCallback);
+	glfwSetScrollCallback(window, VulkanApplication::GLFW_ScrollCallback);
 }
-
-void VulkanApplication::recordAndSubmitForwardRendering(const uint32_t imageIndex) {
-}
-
-void VulkanApplication::createSemaphores() {
-	VkSemaphoreCreateInfo semaphoreInfo = {};
-	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-
-	if (vkCreateSemaphore(contextInfo.device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
-		vkCreateSemaphore(contextInfo.device, &semaphoreInfo, nullptr, &forwardRenderFinishedSemaphore) != VK_SUCCESS)
-	{
-		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create semaphores!";
-		throw std::runtime_error(ss.str());
-	}
-}
-
 VkResult VulkanApplication::CreateDebugReportCallbackEXT(const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
 	auto func = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(contextInfo.instance, "vkCreateDebugReportCallbackEXT");
 	if (func != nullptr) {

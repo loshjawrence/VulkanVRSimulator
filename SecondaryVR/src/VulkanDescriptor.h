@@ -16,7 +16,7 @@
 enum class DescriptorType {
 	HAS_NONE = 0, HAS_DIFFUSE, HAS_NOR, HAS_SPEC, HAS_HEIGHT, HAS_ALL
 };
-
+class Mesh;
 class VulkanDescriptor {
 public:
 	//a layout is like a struct defintion telling the driver what data types are used in a set
@@ -51,13 +51,14 @@ public:
 	~VulkanDescriptor();
 	void createDescriptorSetLayout(const VulkanContextInfo& contextInfo);
 	void createDescriptorPool(const VulkanContextInfo& contextInfo);
+//	void createDescriptorSet(const VulkanContextInfo& contextInfo, const VkBuffer& UBO,
+//		const int sizeofUBOstruct, const VulkanImage& vulkanImage);
 	void createDescriptorSet(const VulkanContextInfo& contextInfo, const VkBuffer& UBO,
-		const int sizeofUBOstruct, const VulkanImage& vulkanImage);
+		const int sizeofUBOstruct, const Mesh* const mesh);
 
-	void determineDescriptorType(const uint32_t diffuseSize, const uint32_t specSize, 
-		const uint32_t norSize, const uint32_t heightSize);
-
-	uint32_t determineNumImageSamplers();
+	//void determineDescriptorType(const uint32_t diffuseSize, const uint32_t specSize, 
+	//	const uint32_t norSize, const uint32_t heightSize);
+	void determineDescriptorType(const Mesh* const mesh);
 
 	void destroyVulkanDescriptor(const VulkanContextInfo& contextInfo);
 	void destroyDescriptorPool(const VulkanContextInfo& contextInfo);

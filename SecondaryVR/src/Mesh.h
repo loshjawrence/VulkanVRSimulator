@@ -32,6 +32,11 @@ public:
 
 	VulkanDescriptor descriptor;
 
+	std::vector<int> diffuseindices;
+	std::vector<int> specindices;
+	std::vector<int> norindices;
+	std::vector<int> heightindices;
+
 public: 
 	Mesh();
 	~Mesh();
