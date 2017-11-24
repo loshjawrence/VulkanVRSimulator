@@ -11,6 +11,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <vector>
 
 namespace {//prevents mulitple defined compiler complaints
 
@@ -47,19 +48,19 @@ namespace {//prevents mulitple defined compiler complaints
 			}
 		}
 
-		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to find suitable memory type!";
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to endSingleTimeCommandsfind suitable memory type!";
 		throw std::runtime_error(ss.str());
 	}
 
-    VkCommandBuffer beginSingleTimeCommands(const VkDevice& device, const VkCommandPool& commandPool) {
+    VkCommandBuffer beginSingleTimeCommands(const VulkanContextInfo& contextInfo) {
         VkCommandBufferAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = commandPool;
+        allocInfo.commandPool = contextInfo.graphicsCommandPools[0];
         allocInfo.commandBufferCount = 1;
 
         VkCommandBuffer commandBuffer;
-        vkAllocateCommandBuffers(device, &allocInfo, &commandBuffer);
+        vkAllocateCommandBuffers(contextInfo.device, &allocInfo, &commandBuffer);
 
         VkCommandBufferBeginInfo beginInfo = {};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -70,8 +71,7 @@ namespace {//prevents mulitple defined compiler complaints
         return commandBuffer;
     }
 
-    void endSingleTimeCommands(const VkDevice& device, const VkCommandPool& commandPool, 
-		const VkCommandBuffer& commandBuffer, const VkQueue& graphicsQueue) {
+    void endSingleTimeCommands(const VulkanContextInfo& contextInfo, const VkCommandBuffer& commandBuffer) {
         vkEndCommandBuffer(commandBuffer);
 
         VkSubmitInfo submitInfo = {};
@@ -79,10 +79,10 @@ namespace {//prevents mulitple defined compiler complaints
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
 
-        vkQueueSubmit(graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-        vkQueueWaitIdle(graphicsQueue);
+        vkQueueSubmit(contextInfo.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        vkQueueWaitIdle(contextInfo.graphicsQueue);
 
-        vkFreeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        vkFreeCommandBuffers(contextInfo.device, contextInfo.graphicsCommandPools[0], 1, &commandBuffer);
     }
 
     void createBuffer(const VulkanContextInfo& contextInfo, const VkDeviceSize& size, const VkBufferUsageFlags& usage, 
@@ -113,8 +113,8 @@ namespace {//prevents mulitple defined compiler complaints
         vkBindBufferMemory(contextInfo.device, buffer, bufferMemory, 0);
     }
 
-    void copyBufferToImage(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
-		VkCommandBuffer commandBuffer = beginSingleTimeCommands(contextInfo.device, commandPool);
+    void copyBufferToImage(const VulkanContextInfo& contextInfo, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+		VkCommandBuffer commandBuffer = beginSingleTimeCommands(contextInfo);
 
         VkBufferImageCopy region = {};
         region.bufferOffset = 0;
@@ -133,6 +133,6 @@ namespace {//prevents mulitple defined compiler complaints
 
         vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 
-        endSingleTimeCommands(contextInfo.device, commandPool, commandBuffer, contextInfo.graphicsQueue);
-    }
+        endSingleTimeCommands(contextInfo, commandBuffer);
+    } 
 }

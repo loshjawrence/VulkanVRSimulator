@@ -246,7 +246,7 @@ VkFormat VulkanContextInfo::findSupportedFormat(const std::vector<VkFormat>& can
 
 void VulkanContextInfo::createDepthImage() {
 	determineDepthFormat();
-	depthImage = VulkanImage(IMAGETYPE::DEPTH, swapChainExtent, depthFormat, *this, graphicsCommandPools[0]);
+	depthImage = VulkanImage(IMAGETYPE::DEPTH, swapChainExtent, depthFormat, *this);
 }
 
 void VulkanContextInfo::determineDepthFormat() {
@@ -304,6 +304,7 @@ void VulkanContextInfo::addGraphicsCommandPool(const int num) {
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = graphicsFamily;
+	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
 	for (int i = 0; i < num; ++i) {
 		VkCommandPool commandPool;

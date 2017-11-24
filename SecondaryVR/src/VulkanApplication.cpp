@@ -21,8 +21,7 @@
 #include <fstream>
 #include <chrono>
 #include <cstring>
-#include <set>
-#include <unordered_map>
+#include <tuple>
 
 std::string convertIntToString(int number)
 {
@@ -47,7 +46,6 @@ VulkanApplication::~VulkanApplication() {
 }
 
 void VulkanApplication::run() {
-	initWindow();
 	initVulkan();
 	mainLoop();
 	cleanup();
@@ -74,7 +72,6 @@ void VulkanApplication::initWindow() {
 	//tell glfw to capture mouse, for FPS camera
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-
 	//set callbacks and window user pointer
 	glfwSetWindowUserPointer(window, this);
 	glfwSetWindowSizeCallback(window, VulkanApplication::onWindowResized);
@@ -82,45 +79,57 @@ void VulkanApplication::initWindow() {
 	glfwSetMouseButtonCallback(window, VulkanApplication::GLFW_MouseButtonCallback);
 	glfwSetKeyCallback(window, VulkanApplication::GLFW_KeyCallback);
 	glfwSetScrollCallback(window, VulkanApplication::GLFW_ScrollCallback);
-	std::cout << "callbacks initialized" << std::endl;
+}
 
+
+void VulkanApplication::loadModels() {
+	const int num = 1700;
+	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
+	for (int i = 0; i < num; ++i) {
+		const float x = rng.nextUInt(15);
+		const float y = rng.nextUInt(15);
+		const float z = rng.nextUInt(15);
+		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+			glm::translate(glm::mat4(1.f),glm::vec3(x, y, z)) };
+	}
+
+	for (auto& modelinfo : defaultScene) {//defaultScene in GlobalSettings.h
+		models.push_back(Model(std::get<0>(modelinfo), std::get<1>(modelinfo), std::get<2>(modelinfo),
+			contextInfo, uniformBuffer, uniformBufferMemory, sizeof(UniformBufferObject)));
+		//models.push_back(Model(std::get<0>(modelinfo), std::get<1>(modelinfo), std::get<2>(modelinfo), contextInfo));
+	}
 }
 
 void VulkanApplication::initVulkan() {
+	
+	//make a GLFW window
+	initWindow();
+
+	//context info holds vulkan things like instance, phys and logical device, swap chain info, depthImage, command pools and queues
 	contextInfo = VulkanContextInfo(window);
 	VulkanApplication::setupDebugCallback();
 	forwardRenderPass = VulkanRenderPass(contextInfo);
 	forwardDescriptor = VulkanDescriptor(contextInfo);
-	forwardPipeline = VulkanGraphicsPipeline(allShaders_DefaultPipeline[0],
-		forwardRenderPass, contextInfo, &(forwardDescriptor.descriptorSetLayout));
-
 
 	//the cookbook says framebuffers represent image subresources that correspond to renderpass attachments(input attachments and render targets)
 	//add a framebuffer component to VulkanRenderPass?
 	//keep swapchain related things with the swapchain
 	contextInfo.createSwapChainFramebuffers(forwardRenderPass.renderPass);
+	forwardPipeline = VulkanGraphicsPipeline(allShaders_ForwardPipeline[0],
+		forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[1]));
 
-	VkExtent2D defaultextent; defaultextent.width = 0; defaultextent.height = 0;
 
-	VulkanImage modelTexture = VulkanImage(IMAGETYPE::TEXTURE, defaultextent, VK_FORMAT_R8G8B8A8_UNORM,
-		contextInfo, contextInfo.graphicsCommandPools[0], std::string(TEXTURE_PATH));
-
-	VulkanApplication::loadModel();
-	VulkanBuffer::createVertexBuffer(contextInfo, contextInfo.graphicsCommandPools[0], vertices, vertexBuffer, vertexBufferMemory);
-	VulkanBuffer::createIndexBuffer(contextInfo, contextInfo.graphicsCommandPools[0], indices, indexBuffer, indexBufferMemory);
 	VulkanBuffer::createUniformBuffer(contextInfo, sizeof(UniformBufferObject), uniformBuffer, uniformBufferMemory);
 
-	forwardDescriptor.createDescriptorSet(contextInfo, uniformBuffer, sizeof(UniformBufferObject), modelTexture.imageView, modelTexture.sampler);
+	loadModels();
 
-	forwardPipeline.createCommandBuffers(contextInfo, forwardRenderPass, vertexBuffer, indexBuffer, indices, forwardDescriptor);
-	forwardPipeline.createSemaphores(contextInfo);
+	createSemaphores();
 }
 
 void VulkanApplication::mainLoop() {
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
 		processInputAndUpdateFPS();
-		updateUniformBuffer();
 		drawFrame();
 	}
 	vkDeviceWaitIdle(contextInfo.device);
@@ -166,20 +175,9 @@ void VulkanApplication::cleanup() {
 	cleanupSwapChain();
 
 	//TODO: add to Mesh cleanup texture image
-	modelTexture.destroyVulkanImage(contextInfo);
-
-	//clean up descriptor
-	forwardDescriptor.destroyVulkanDescriptor(contextInfo);
-
-	//TODO: add to Camera clean up ubo
-	vkDestroyBuffer(contextInfo.device, uniformBuffer, nullptr);
-	vkFreeMemory(contextInfo.device, uniformBufferMemory, nullptr);
-
-	//TODO: add destroy buffers to Mesh, clean up ibo, vbo
-	vkDestroyBuffer(contextInfo.device, indexBuffer, nullptr);
-	vkFreeMemory(contextInfo.device, indexBufferMemory, nullptr);
-	vkDestroyBuffer(contextInfo.device, vertexBuffer, nullptr);
-	vkFreeMemory(contextInfo.device, vertexBufferMemory, nullptr);
+	for (auto& model : models) {
+		model.destroyVulkanHandles(contextInfo);
+	}
 
 	//clean up pipeline semaphores
 	forwardPipeline.destroyPipelineSemaphores(contextInfo);
@@ -225,7 +223,7 @@ void VulkanApplication::recreateSwapChain() {
 
 	contextInfo.createSwapChainFramebuffers(forwardRenderPass.renderPass);
 
-	forwardPipeline.createCommandBuffers(contextInfo, forwardRenderPass, vertexBuffer, indexBuffer, indices, forwardDescriptor);
+	//forwardPipeline.createCommandBuffers(contextInfo, forwardRenderPass, vertexBuffer, indexBuffer, indices, forwardDescriptor);
 
 	//update camera
 	camera.updateDimensionsAndUBO(contextInfo.swapChainExtent);
@@ -247,58 +245,17 @@ void VulkanApplication::setupDebugCallback() {
 }
 
 
-void VulkanApplication::loadModel() {
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
-	std::string err;
-
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &err, MODEL_PATH.c_str())) {
-		throw std::runtime_error(err);
-	}
-
-	std::unordered_map<Vertex, uint32_t> uniqueVertices = {};
-
-	for (const auto& shape : shapes) {
-		for (const auto& index : shape.mesh.indices) {
-			Vertex vertex = {};
-
-			vertex.pos = {
-				attrib.vertices[3 * index.vertex_index + 0],
-				attrib.vertices[3 * index.vertex_index + 1],
-				attrib.vertices[3 * index.vertex_index + 2]
-			};
-
-			vertex.texCoord = {
-				attrib.texcoords[2 * index.texcoord_index + 0],
-				1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-			};
-
-			vertex.color = { 1.0f, 1.0f, 1.0f };
-
-			if (uniqueVertices.count(vertex) == 0) {
-				uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-				vertices.push_back(vertex);
-			}
-
-			indices.push_back(uniqueVertices[vertex]);
-		}
-	}
-}
-
 void VulkanApplication::updateUniformBuffer() {
 	static auto startTime = std::chrono::high_resolution_clock::now();
 
 	auto currentTime = std::chrono::high_resolution_clock::now();
-	float time = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
+	time = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
 
 	UniformBufferObject ubo = {};
-	ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	//ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	//ubo.proj = glm::perspective(glm::radians(45.0f), contextInfo.swapChainExtent.width / (float)contextInfo.swapChainExtent.height, 0.1f, 10.0f);
+	//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 	ubo.view = camera.view;
 	ubo.proj = camera.proj;
-	//ubo.proj[1][1] *= -1;//if doing opengl calculations for camera, need this to account for vulkan, screen origin starts upper left instead of bottom right
+	ubo.proj[1][1] *= -1;//need for correct z-buffer order
 
 	void* data;
 	vkMapMemory(contextInfo.device, uniformBufferMemory, 0, sizeof(ubo), 0, &data);
@@ -306,43 +263,85 @@ void VulkanApplication::updateUniformBuffer() {
 	vkUnmapMemory(contextInfo.device, uniformBufferMemory);
 }
 
+void VulkanApplication::updateUniformBuffer(const Model& model) {
+	static auto startTime = std::chrono::high_resolution_clock::now();
+
+	auto currentTime = std::chrono::high_resolution_clock::now();
+	float time = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
+
+
+	UniformBufferObject ubo = {};
+	ubo.model = glm::rotate(model.modelMatrix, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+	ubo.view = camera.view;
+	ubo.proj = camera.proj;
+	ubo.proj[1][1] *= -1;//need for correct z-buffer order
+
+	void* data;
+	vkMapMemory(contextInfo.device, model.uniformBufferMemory, 0, sizeof(ubo), 0, &data);
+	memcpy(data, &ubo, sizeof(ubo));
+	vkUnmapMemory(contextInfo.device, model.uniformBufferMemory);
+}
+
 
 void VulkanApplication::drawFrame() {
 	uint32_t imageIndex;
-	VkResult result = vkAcquireNextImageKHR(contextInfo.device, contextInfo.swapChain, std::numeric_limits<uint64_t>::max(), forwardPipeline.imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(contextInfo.device, contextInfo.swapChain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
 		recreateSwapChain();
 		return;
 	} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-		throw std::runtime_error("failed to acquire swap chain image!");
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to acquire swap chain image!";
+		throw std::runtime_error(ss.str());
 	}
 
+	std::vector<VkSemaphore> waitSemaphores = { imageAvailableSemaphore };
+	//finished signals for each stage, successive stages need to wait on the previous finish
+	std::vector<VkSemaphore> signalSemaphores = { forwardRenderFinishedSemaphore };
+
+	////////////////
+	//// RECORD ////
+	////////////////
+	updateUniformBuffer();
+	for (Model& model : models) {
+	//record command buffers for visible objects
+		//updateUniformBuffer(model);//test against push constant
+		for (Mesh& mesh : model.mMeshes) {
+			//select pipeline for the descriptor type
+			uint32_t numsamplers = mesh.descriptor.numImageSamplers;
+			forwardPipeline.recordCommandBufferTEST(imageIndex, contextInfo, forwardRenderPass, model, mesh, time);
+		}
+	}
+	forwardPipeline.endRecording(imageIndex);
+
+	//forwardPipeline.recordCommandBuffer(imageIndex, contextInfo, forwardRenderPass, vertexBuffer, indexBuffer, indices, models[0].mMeshes[0].descriptor);
+	/////////////////
+	//// SUBMIT /////
+	/////////////////
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	VkSemaphore waitSemaphores[] = { forwardPipeline.imageAvailableSemaphore };
 	VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submitInfo.waitSemaphoreCount = 1;
-	submitInfo.pWaitSemaphores = waitSemaphores;
+	submitInfo.pWaitSemaphores = &waitSemaphores[0];
 	submitInfo.pWaitDstStageMask = waitStages;
 
 	submitInfo.commandBufferCount = 1;
 	submitInfo.pCommandBuffers = &forwardPipeline.commandBuffers[imageIndex];
 
-	VkSemaphore signalSemaphores[] = { forwardPipeline.renderFinishedSemaphore };
 	submitInfo.signalSemaphoreCount = 1;
-	submitInfo.pSignalSemaphores = signalSemaphores;
+	submitInfo.pSignalSemaphores = &signalSemaphores[0];
 
 	if (vkQueueSubmit(contextInfo.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
-		throw std::runtime_error("failed to submit draw command buffer!");
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to submit draw command buffer!";
+		throw std::runtime_error(ss.str());
 	}
 
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
 	presentInfo.waitSemaphoreCount = 1;
-	presentInfo.pWaitSemaphores = signalSemaphores;
+	presentInfo.pWaitSemaphores = &signalSemaphores.back();
 
 	VkSwapchainKHR swapChains[] = { contextInfo.swapChain };
 	presentInfo.swapchainCount = 1;
@@ -350,14 +349,30 @@ void VulkanApplication::drawFrame() {
 
 	presentInfo.pImageIndices = &imageIndex;
 
+	vkQueueWaitIdle(contextInfo.presentQueue);
 	result = vkQueuePresentKHR(contextInfo.presentQueue, &presentInfo);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		recreateSwapChain();
 	} else if (result != VK_SUCCESS) {
-		throw std::runtime_error("failed to present swap chain image!");
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to present swap chain image!";
+		throw std::runtime_error(ss.str());
 	}
-	vkQueueWaitIdle(contextInfo.presentQueue);
+}
+
+void VulkanApplication::recordAndSubmitForwardRendering(const uint32_t imageIndex) {
+}
+
+void VulkanApplication::createSemaphores() {
+	VkSemaphoreCreateInfo semaphoreInfo = {};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+
+	if (vkCreateSemaphore(contextInfo.device, &semaphoreInfo, nullptr, &imageAvailableSemaphore) != VK_SUCCESS ||
+		vkCreateSemaphore(contextInfo.device, &semaphoreInfo, nullptr, &forwardRenderFinishedSemaphore) != VK_SUCCESS)
+	{
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create semaphores!";
+		throw std::runtime_error(ss.str());
+	}
 }
 
 VkResult VulkanApplication::CreateDebugReportCallbackEXT(const VkDebugReportCallbackCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugReportCallbackEXT* pCallback) {
@@ -400,8 +415,7 @@ void VulkanApplication::GLFW_MousePosCallback(GLFWwindow * window, double xpos, 
 	}
 
 	float xoffset = xpos - app->lastX;
-	//float yoffset = app->lastY - ypos; // reversed since y-coordinates go from bottom to top for OpenGL
-	float yoffset = ypos - app->lastY; // vulkan
+	float yoffset = app->lastY - ypos; // reversed since y-coordinates go from bottom to top for OpenGL
 
 	app->lastX = xpos;
 	app->lastY = ypos;

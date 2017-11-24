@@ -14,7 +14,7 @@ enum class MovementDirection {
 class Camera {
 public:
 	const glm::vec3 worldUp = glm::vec3(0.f, 1.f, 0.f);
-	float movementspeed = 5.f;
+	float movementspeed = 10.f;
 	float looksensitivity = 0.5f;
 	float yaw = -90.f;//about y, looking down local -z
 	float pitch = 0.f;//about x
@@ -22,8 +22,8 @@ public:
 	float width = 1080;
 	float height = 600;
 	float near = 0.1f;
-	float far = 100.f;
-	glm::vec3 camPos = glm::vec3(0.f, 0.f, 3.f);
+	float far = 1000.f;
+	glm::vec3 camPos = glm::vec3(0.f, 3.f, 6.f);
 	glm::vec3 camFront;
 	glm::vec3 camRight;
 	glm::vec3 camUp;

@@ -45,16 +45,16 @@ void VulkanBuffer::createBuffer(const VulkanContextInfo& contextInfo, const VkDe
 	vkBindBufferMemory(contextInfo.device, buffer, bufferMemory, 0);
 }
 
-void VulkanBuffer::copyBuffer(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool, 
+void VulkanBuffer::copyBuffer(const VulkanContextInfo& contextInfo,
 	VkBuffer& srcBuffer, VkBuffer& dstBuffer, const VkDeviceSize& size) 
 {
-	VkCommandBuffer commandBuffer = beginSingleTimeCommands(contextInfo.device, commandPool);
+	VkCommandBuffer commandBuffer = beginSingleTimeCommands(contextInfo);
 
 	VkBufferCopy copyRegion = {};
 	copyRegion.size = size;
 	vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
 
-	endSingleTimeCommands(contextInfo.device, commandPool, commandBuffer, contextInfo.graphicsQueue);
+	endSingleTimeCommands(contextInfo, commandBuffer);
 }
 
 void VulkanBuffer::createUniformBuffer(const VulkanContextInfo& contextInfo, const VkDeviceSize& bufferSize, 
@@ -63,7 +63,7 @@ void VulkanBuffer::createUniformBuffer(const VulkanContextInfo& contextInfo, con
 	createBuffer(contextInfo, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffer, uniformBufferMemory);
 }
 
-void VulkanBuffer::createVertexBuffer(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool, 
+void VulkanBuffer::createVertexBuffer(const VulkanContextInfo& contextInfo,
 	const std::vector<Vertex>& vertices, VkBuffer& vertexBuffer, VkDeviceMemory& vertexBufferMemory) 
 {
 	VkDeviceSize bufferSize = sizeof(vertices[0]) * vertices.size();
@@ -79,13 +79,13 @@ void VulkanBuffer::createVertexBuffer(const VulkanContextInfo& contextInfo, cons
 
 	createBuffer(contextInfo, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, vertexBuffer, vertexBufferMemory);
 
-	copyBuffer(contextInfo, commandPool, stagingBuffer, vertexBuffer, bufferSize);
+	copyBuffer(contextInfo, stagingBuffer, vertexBuffer, bufferSize);
 
 	vkDestroyBuffer(contextInfo.device, stagingBuffer, nullptr);
 	vkFreeMemory(contextInfo.device, stagingBufferMemory, nullptr);
 }
 
-void VulkanBuffer::createIndexBuffer(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool, 
+void VulkanBuffer::createIndexBuffer(const VulkanContextInfo& contextInfo, 
 	const std::vector<uint32_t>& indices, VkBuffer& indexBuffer, VkDeviceMemory& indexBufferMemory)
 {
 	VkDeviceSize bufferSize = sizeof(indices[0]) * indices.size();
@@ -101,7 +101,7 @@ void VulkanBuffer::createIndexBuffer(const VulkanContextInfo& contextInfo, const
 
 	createBuffer(contextInfo, bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, indexBuffer, indexBufferMemory);
 
-	copyBuffer(contextInfo, commandPool, stagingBuffer, indexBuffer, bufferSize);
+	copyBuffer(contextInfo, stagingBuffer, indexBuffer, bufferSize);
 
 	vkDestroyBuffer(contextInfo.device, stagingBuffer, nullptr);
 	vkFreeMemory(contextInfo.device, stagingBufferMemory, nullptr);

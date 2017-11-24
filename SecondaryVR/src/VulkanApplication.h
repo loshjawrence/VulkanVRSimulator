@@ -14,13 +14,15 @@
 #include "VulkanGraphicsPipeline.h"
 #include "VulkanImage.h"
 #include "VulkanBuffer.h"
+#include "Model.h"
+#include "pcg32.h"
 
 #include "Camera.h"
 
 namespace std {
     template<> struct hash<Vertex> {
         size_t operator()(Vertex const& vertex) const {
-            return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.texCoord) << 1);
+            return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.uv) << 1);
         }
     };
 }
@@ -43,21 +45,25 @@ private:
 
     VkDebugReportCallbackEXT callback;
 
-	//TODO: should belong in Model or Mesh?
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
-	VulkanImage modelTexture;
+	//RNG
+	pcg32 rng = pcg32(17);
+
+	//TODO: should belong in Model/Mesh
+	std::vector<Model> models;
+ //   std::vector<Vertex> vertices;
+ //   std::vector<uint32_t> indices;
+ //   VkBuffer vertexBuffer;
+ //   VkDeviceMemory vertexBufferMemory;
+ //   VkBuffer indexBuffer;
+ //   VkDeviceMemory indexBufferMemory;
+	//VulkanImage modelTexture;
 
 	//camera
 	Camera camera = Camera();
 	bool firstmouse = true;
 	float lastX = camera.width / 2.f;
 	float lastY = camera.height / 2.f;
-	//TODO: should belong in camera?
+
     VkBuffer uniformBuffer;
     VkDeviceMemory uniformBufferMemory;
 
@@ -75,8 +81,13 @@ private:
 	int fpstracker = 0;
 	
 	//used for physical movement
+	float time = 0.f;
 	float deltaTime = 0.f;
 	float lastFrame = 0.f;
+
+	//semphores for communication bewteen various stages
+	VkSemaphore imageAvailableSemaphore;
+	VkSemaphore forwardRenderFinishedSemaphore;
 
 private:
 
@@ -88,10 +99,13 @@ private:
 	void updateFPS();
 	void processInputAndUpdateFPS();
 
-	//TODO: refactor later
-	void loadModel();
+	void loadModels();
 	void updateUniformBuffer();
+	void updateUniformBuffer(const Model& model);
+
+	//drawing
 	void drawFrame();
+	void recordAndSubmitForwardRendering(const uint32_t imageIndex);
 
 	//window resized need to recreate swap chain
 	void cleanupSwapChain();
@@ -106,6 +120,8 @@ private:
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, 
 		uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData);
 
+
+	void createSemaphores();
 
 	static void VulkanApplication::GLFW_MousePosCallback(GLFWwindow * window, double xpos, double ypos);
 	static void GLFW_MouseButtonCallback(GLFWwindow * window, int button, int action, int mods);

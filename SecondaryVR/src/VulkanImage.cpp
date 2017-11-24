@@ -22,13 +22,13 @@ VulkanImage::VulkanImage() {
 }
 
 VulkanImage::VulkanImage(const IMAGETYPE& imagetype, const VkExtent2D& extent, const VkFormat& format,
-	const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool, std::string& filepath)
+	const VulkanContextInfo& contextInfo, std::string& filepath)
 	: extent(extent), format(format), imagetype(imagetype), filepath(filepath)
 {
 	if (imagetype == IMAGETYPE::DEPTH) {
-		createDepthImage(contextInfo, commandPool);
+		createDepthImage(contextInfo);
 	} else if (imagetype == IMAGETYPE::TEXTURE) {
-		createTextureImage(contextInfo, commandPool);
+		createTextureImage(contextInfo);
 	}
 }
 
@@ -49,13 +49,13 @@ void VulkanImage::operator=(const VulkanImage& rightside) {
 	//no need for cascading assigment so no need to return *this
 }
 
-void VulkanImage::createDepthImage(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool) {
+void VulkanImage::createDepthImage(const VulkanContextInfo& contextInfo) {
 	createImage(contextInfo);
 	createImageView(contextInfo);
-	transitionImageLayout(contextInfo, commandPool, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	transitionImageLayout(contextInfo, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
-void VulkanImage::createTextureImage(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool) {
+void VulkanImage::createTextureImage(const VulkanContextInfo& contextInfo) {
 	int texWidth, texHeight, texChannels;
 	stbi_uc* pixels = stbi_load(filepath.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 	extent.width = texWidth;
@@ -78,12 +78,10 @@ void VulkanImage::createTextureImage(const VulkanContextInfo& contextInfo, const
 
 	stbi_image_free(pixels);
 	createImage(contextInfo);
-//
-//	transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	transitionImageLayout(contextInfo, commandPool, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	copyBufferToImage(contextInfo, commandPool, stagingBuffer, image, extent.width, extent.height);
-	//transitionImageLayout(textureImage, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	transitionImageLayout(contextInfo, commandPool, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	transitionImageLayout(contextInfo, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	copyBufferToImage(contextInfo, stagingBuffer, image, extent.width, extent.height);
+	transitionImageLayout(contextInfo, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	vkDestroyBuffer(contextInfo.device, stagingBuffer, nullptr);
 	vkFreeMemory(contextInfo.device, stagingBufferMemory, nullptr);
@@ -170,10 +168,10 @@ void VulkanImage::createImageView(const VulkanContextInfo& contextInfo) {
 	}
 }
 
-void VulkanImage::transitionImageLayout(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool, 
+void VulkanImage::transitionImageLayout(const VulkanContextInfo& contextInfo, 
 	const VkImageLayout oldLayout, const VkImageLayout newLayout) 
 {
-	VkCommandBuffer commandBuffer = beginSingleTimeCommands(contextInfo.device, commandPool);
+	VkCommandBuffer commandBuffer = beginSingleTimeCommands(contextInfo);
 
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -230,7 +228,7 @@ void VulkanImage::transitionImageLayout(const VulkanContextInfo& contextInfo, co
 		1, &barrier
 	);
 
-	endSingleTimeCommands(contextInfo.device, commandPool, commandBuffer, contextInfo.graphicsQueue);
+	endSingleTimeCommands(contextInfo, commandBuffer);
 }
 void VulkanImage::createImageSampler(const VulkanContextInfo& contextInfo) {
 	VkSamplerCreateInfo samplerInfo = {};
@@ -284,17 +282,21 @@ void VulkanImage::destroyVulkanImage(const VulkanContextInfo& contextInfo) {
 }
 
 void VulkanImage::destroySampler(const VulkanContextInfo& contextInfo) {
-	vkDestroySampler(contextInfo.device, sampler, nullptr);
+	if(sampler != VK_NULL_HANDLE)
+		vkDestroySampler(contextInfo.device, sampler, nullptr);
 }
 
 void VulkanImage::destroyImageView(const VulkanContextInfo& contextInfo) {
-	vkDestroyImageView(contextInfo.device, imageView, nullptr);
+	if(imageView != VK_NULL_HANDLE)
+		vkDestroyImageView(contextInfo.device, imageView, nullptr);
 }
 
 void VulkanImage::destroyImage(const VulkanContextInfo& contextInfo) {
-	vkDestroyImage(contextInfo.device, image, nullptr);
+	if(image != VK_NULL_HANDLE)
+		vkDestroyImage(contextInfo.device, image, nullptr);
 }
 
 void VulkanImage::destroyImageMemory(const VulkanContextInfo& contextInfo) {
-        vkFreeMemory(contextInfo.device, imageMemory, nullptr);
+	if(imageMemory != VK_NULL_HANDLE)
+		vkFreeMemory(contextInfo.device, imageMemory, nullptr);
 }

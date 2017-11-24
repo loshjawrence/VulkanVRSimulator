@@ -5,10 +5,17 @@
 #include <GLFW/glfw3.h>
 #endif // !GLFW_INCLUDE_VULKAN
 
+
+
 #include "VulkanContextInfo.h"
+#include <vector>
 
 
 //TODO: make base and subclasses
+
+enum class DescriptorType {
+	HAS_NONE = 0, HAS_DIFFUSE, HAS_NOR, HAS_SPEC, HAS_HEIGHT, HAS_ALL
+};
 
 class VulkanDescriptor {
 public:
@@ -31,7 +38,12 @@ public:
 	VkImageView imageView;
 	VkSampler sampler;
 
+	DescriptorType type = DescriptorType::HAS_DIFFUSE; 
+	int numImageSamplers = 1;
 
+	static const int MAX_IMAGESAMPLERS = 4;
+	static bool layoutsInitialized;
+	static std::vector<VkDescriptorSetLayout> layoutTypes;
 
 public:
 	VulkanDescriptor();
@@ -40,7 +52,12 @@ public:
 	void createDescriptorSetLayout(const VulkanContextInfo& contextInfo);
 	void createDescriptorPool(const VulkanContextInfo& contextInfo);
 	void createDescriptorSet(const VulkanContextInfo& contextInfo, const VkBuffer& UBO,
-		const int sizeofUBOstruct, const VkImageView& imageView, const VkSampler& sampler);
+		const int sizeofUBOstruct, const VulkanImage& vulkanImage);
+
+	void determineDescriptorType(const uint32_t diffuseSize, const uint32_t specSize, 
+		const uint32_t norSize, const uint32_t heightSize);
+
+	uint32_t determineNumImageSamplers();
 
 	void destroyVulkanDescriptor(const VulkanContextInfo& contextInfo);
 	void destroyDescriptorPool(const VulkanContextInfo& contextInfo);

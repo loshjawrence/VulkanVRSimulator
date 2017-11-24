@@ -9,7 +9,6 @@
 #include "VulkanDescriptor.h"
 #include "VulkanRenderPass.h"
 #include "Vertex.h"
-
 #include <vector>
 #include <string>
 
@@ -23,6 +22,16 @@
 //each material (different set of shaders) will need an instance of this pipeline
 //make a post process class since it's setup will be different than a forward render pass
 
+class Mesh;
+class Model;
+
+struct PushConstant {
+	glm::mat4 modelMatrix;
+	float time;
+	float dynamic;
+	static const VkShaderStageFlags stages = VK_SHADER_STAGE_VERTEX_BIT;
+};
+
 class VulkanGraphicsPipeline {
 public:
 	std::vector<std::string> shaderpaths;
@@ -34,6 +43,8 @@ public:
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
 
+	//recording state
+	bool recording = false;
 
 public:
 	VulkanGraphicsPipeline();
@@ -41,6 +52,8 @@ public:
 		const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts);
 
 	~VulkanGraphicsPipeline();
+
+	void allocateCommandBuffers(const VulkanContextInfo& contextInfo);
 
 	void createGraphicsPipeline(const VulkanRenderPass& renderPass, const VulkanContextInfo& contextInfo, 
 		const VkDescriptorSetLayout* setLayouts);
@@ -51,6 +64,17 @@ public:
 		const VulkanRenderPass& renderPass, const VkBuffer& vertexBuffer, const VkBuffer& indexBuffer,
 		const std::vector<uint32_t>& indices, const VulkanDescriptor& descriptor);
 
+	void VulkanGraphicsPipeline::recordCommandBuffer(const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
+		const VulkanRenderPass& renderPass, const VkBuffer& vertexBuffer, const VkBuffer& indexBuffer,
+		const std::vector<uint32_t>& indices, const VulkanDescriptor& descriptor);
+
+	//void VulkanGraphicsPipeline::recordCommandBufferTEST(const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
+	//	const VulkanRenderPass& renderPass, const VkBuffer& vertexBuffer, const VkBuffer& indexBuffer,
+	//	const std::vector<uint32_t>& indices, const VulkanDescriptor& descriptor);
+	void VulkanGraphicsPipeline::recordCommandBufferTEST(const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
+		const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const float time);
+	void beginRecording(const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass);
+	void endRecording(const uint32_t imageIndex);
 	void createSemaphores(const VulkanContextInfo& contextInfo);
 
 	//cleanup

@@ -31,15 +31,15 @@ public:
 public:
 	VulkanImage();
 	VulkanImage(const IMAGETYPE& imagetype, const VkExtent2D& extent, const VkFormat& format,
-		const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool, std::string& filepath = std::string(""));
+		const VulkanContextInfo& contextInfo, std::string& filepath = std::string(""));
 	~VulkanImage();
 
 	void operator=(const VulkanImage& rightside);
-	void createDepthImage(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool);
-	void createTextureImage(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool);
+	void createDepthImage(const VulkanContextInfo& contextInfo);
+	void createTextureImage(const VulkanContextInfo& contextInfo);
 	void createImage(const VulkanContextInfo& contextInfo);
 	void createImageView(const VulkanContextInfo& contextInfo);
-	void transitionImageLayout(const VulkanContextInfo& contextInfo, const VkCommandPool& commandPool,
+	void transitionImageLayout(const VulkanContextInfo& contextInfo,
 		const VkImageLayout oldLayout, const VkImageLayout newLayout);
 	void createImageSampler(const VulkanContextInfo& contextInfo);
 
