@@ -45,16 +45,16 @@ void VulkanApplication::loadModels() {
 		const float x = rng.nextUInt(1);
 		const float y = rng.nextUInt(1);
 		const float z = rng.nextUInt(1);
-		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
-		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.f)),glm::vec3(x, y, z)) };
-		defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(5.0f)),glm::vec3(y, z, x)) };
-		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(5.0f)),glm::vec3(y, z, x)) };
+		//defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 1,
 		//defaultScene[i+1] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.05f)),glm::vec3(x, y, z)) };
@@ -85,14 +85,15 @@ void VulkanApplication::initVulkan() {
 	contextInfo.createSwapChainFramebuffers(forwardRenderPass.renderPass);
 
 	//setup forward pipelines from our forward shaders
-	for (int i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
-		int numImageSamplers = 0;
-		for (int k = 1; k < VulkanDescriptor::MAX_IMAGESAMPLERS + 1; ++k) //the first bit is for HAS_NONE so we need to ignore that one
-			numImageSamplers = (allShaders_ForwardPipeline[i].second & 1 << k) ? numImageSamplers + 1 : numImageSamplers;
-		
-		forwardPipelines.push_back(VulkanGraphicsPipeline(allShaders_ForwardPipeline[i].first,
-			forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[numImageSamplers])));
-	}
+	createPipelines();
+	//for (int i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
+	//	int numImageSamplers = 0;
+	//	for (int k = 1; k < VulkanDescriptor::MAX_IMAGESAMPLERS + 1; ++k) //the first bit is for HAS_NONE so we need to ignore that one
+	//		numImageSamplers = (allShaders_ForwardPipeline[i].second & 1 << k) ? numImageSamplers + 1 : numImageSamplers;
+	//	
+	//	forwardPipelines.push_back(VulkanGraphicsPipeline(allShaders_ForwardPipeline[i].first,
+	//		forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[numImageSamplers])));
+	//}
 	VulkanBuffer::createUniformBuffer(contextInfo, sizeof(UniformBufferObject), uniformBuffer, uniformBufferMemory);
 
 	loadModels();
@@ -120,45 +121,46 @@ void VulkanApplication::drawFrame() {
 	////////////////
 	//// RECORD ////
 	////////////////
-	updateUniformBuffer();
-	VkCommandBufferInheritanceInfo inheritanceInfo = {};
-	beginRecordingPrimary(inheritanceInfo, imageIndex);
-	for (Model& model : models) {
-		//record command buffers for visible objects
-		for (Mesh& mesh : model.mMeshes) {
-		    //TODO: the pipeline selection is wrong
-			forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferSecondary(
-				inheritanceInfo, imageIndex, contextInfo, forwardRenderPass, model, mesh, time);
-		}
-	}
+	//PRIMARY FILLED WITH HOMOGENOUS SECONDARY
+	//updateUniformBuffer();
+	//VkCommandBufferInheritanceInfo inheritanceInfo = {};
+	//beginRecordingPrimary(inheritanceInfo, imageIndex);
+	//for (Model& model : models) {
+	//	//record command buffers for visible objects
+	//	for (Mesh& mesh : model.mMeshes) {
+	//	    //TODO: the pipeline selection is wrong
+	//		forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferSecondary(
+	//			inheritanceInfo, imageIndex, contextInfo, forwardRenderPass, model, mesh, time);
+	//	}
+	//}
 
-	//gather vector of pipeline homogenous secondary command buffers
-	std::vector<VkCommandBuffer> forwardCommandBuffers;
-	for (int i = 0; i < forwardPipelines.size(); ++i) {
-		if (forwardPipelines[i].endRecordingSecondary(imageIndex)) {
-			forwardCommandBuffers.push_back(forwardPipelines[i].commandBuffers[imageIndex]);
-		}
-	}
-	//record into primary buffer
-	vkCmdExecuteCommands(primaryForwardCommandBuffers[imageIndex],
-		static_cast<uint32_t>(forwardCommandBuffers.size()), forwardCommandBuffers.data());
-	endRecordingPrimary(imageIndex);
+	////gather vector of pipeline homogenous secondary command buffers
+	//std::vector<VkCommandBuffer> forwardCommandBuffers;
+	//for (int i = 0; i < forwardPipelines.size(); ++i) {
+	//	if (forwardPipelines[i].endRecordingSecondary(imageIndex)) {
+	//		forwardCommandBuffers.push_back(forwardPipelines[i].commandBuffers[imageIndex]);
+	//	}
+	//}
+	////record into primary buffer
+	//vkCmdExecuteCommands(primaryForwardCommandBuffers[imageIndex],
+	//	static_cast<uint32_t>(forwardCommandBuffers.size()), forwardCommandBuffers.data());
+	//endRecordingPrimary(imageIndex);
 
 
 
 
 	////Unsorted Pipelines
-	//updateUniformBuffer();
-	//beginRecordingPrimary(imageIndex);
-	//for (Model& model : models) {
-	//	//TODO: record only visible meshes
-	//	for (Mesh& mesh : model.mMeshes) {
-	//      //TODO: the pipeline selection is wrong
-	//		forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferSingle(
-	//			primaryForwardCommandBuffers[imageIndex], imageIndex, contextInfo, model, mesh, time);
-	//	}
-	//}
-	//endRecordingPrimary(imageIndex);
+	updateUniformBuffer();
+	beginRecordingPrimary(imageIndex);
+	for (Model& model : models) {
+		//TODO: record only visible meshes
+		for (Mesh& mesh : model.mMeshes) {
+	      //TODO: the pipeline selection is wrong
+			forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferSingle(
+				primaryForwardCommandBuffers[imageIndex], imageIndex, contextInfo, model, mesh, time);
+		}
+	}
+	endRecordingPrimary(imageIndex);
 
 
 	VkSubmitInfo submitInfo = {};
@@ -286,7 +288,7 @@ void VulkanApplication::createSemaphores() {
 void VulkanApplication::updateUniformBuffer() {
 	UniformBufferObject ubo = {};
 	//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = camera.view;
+	ubo.view = camera.view[1];
 	ubo.proj = camera.proj;
 	ubo.proj[1][1] *= -1;//need for correct z-buffer order
 
@@ -296,18 +298,18 @@ void VulkanApplication::updateUniformBuffer() {
 	vkUnmapMemory(contextInfo.device, uniformBufferMemory);
 }
 
-void VulkanApplication::updateUniformBuffer(const Model& model) {
-	UniformBufferObject ubo = {};
-	ubo.model = glm::rotate(model.modelMatrix, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = camera.view;
-	ubo.proj = camera.proj;
-	ubo.proj[1][1] *= -1;//need for correct z-buffer order
-
-	void* data;
-	vkMapMemory(contextInfo.device, model.uniformBufferMemory, 0, sizeof(ubo), 0, &data);
-	memcpy(data, &ubo, sizeof(ubo));
-	vkUnmapMemory(contextInfo.device, model.uniformBufferMemory);
-}
+//void VulkanApplication::updateUniformBuffer(const Model& model) {
+//	UniformBufferObject ubo = {};
+//	ubo.model = glm::rotate(model.modelMatrix, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+//	ubo.view = camera.view;
+//	ubo.proj = camera.proj;
+//	ubo.proj[1][1] *= -1;//need for correct z-buffer order
+//
+//	void* data;
+//	vkMapMemory(contextInfo.device, model.uniformBufferMemory, 0, sizeof(ubo), 0, &data);
+//	memcpy(data, &ubo, sizeof(ubo));
+//	vkUnmapMemory(contextInfo.device, model.uniformBufferMemory);
+//}
 
 void VulkanApplication::allocateCommandBuffers() {
 	primaryForwardCommandBuffers.resize(contextInfo.swapChainFramebuffers.size());
@@ -392,6 +394,10 @@ void VulkanApplication::processInputAndUpdateFPS() {
 			camera.processKeyboardAndUpdateView(MovementDirection::UP, deltaTime);
 		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
 			camera.processKeyboardAndUpdateView(MovementDirection::DOWN, deltaTime);
+		if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
+			camera.updateVrModeAndCameras();
+			recreateSwapChain();
+		}
 }
 
 void VulkanApplication::cleanup() {
@@ -418,16 +424,37 @@ void VulkanApplication::cleanup() {
 	glfwTerminate();
 }
 
+void VulkanApplication::destroyPipelines() {
+	for (auto& pipeline : forwardPipelines) {
+		pipeline.destroyVulkanPipeline(contextInfo);
+	}
+}
+
+void VulkanApplication::createPipelines() {
+	//forwardPipelines
+	forwardPipelines.resize(allShaders_ForwardPipeline.size());
+	for (int i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
+		int numImageSamplers = 0;
+		for (int k = 1; k < VulkanDescriptor::MAX_IMAGESAMPLERS + 1; ++k) //the first bit is for HAS_NONE so we need to ignore that one
+			numImageSamplers = (allShaders_ForwardPipeline[i].second & 1 << k) ? numImageSamplers + 1 : numImageSamplers;
+
+		forwardPipelines[i] = VulkanGraphicsPipeline(allShaders_ForwardPipeline[i].first,
+			forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[numImageSamplers]));
+	}
+}
 
 void VulkanApplication::cleanupSwapChain() {
 	contextInfo.depthImage.destroyVulkanImage(contextInfo);
 
-	forwardPipeline.destroyVulkanPipeline(contextInfo);
+	//forwardPipeline.destroyVulkanPipeline(contextInfo);
+	//NEW
+	destroyPipelines();
 
 	forwardRenderPass.destroyRenderPass(contextInfo);
 
 	contextInfo.destroyVulkanSwapChain();
 }
+
 
 void VulkanApplication::recreateSwapChain() {
 	vkDeviceWaitIdle(contextInfo.device);
@@ -440,16 +467,16 @@ void VulkanApplication::recreateSwapChain() {
 
 	forwardRenderPass.createRenderPass(contextInfo);
 
-	forwardPipeline.createGraphicsPipeline(forwardRenderPass, contextInfo, &forwardDescriptor.descriptorSetLayout);
+	//forwardPipeline.createGraphicsPipeline(forwardRenderPass, contextInfo, &forwardDescriptor.descriptorSetLayout);
+	//NEW
+	createPipelines();
 
 	contextInfo.createDepthImage();
 
 	contextInfo.createSwapChainFramebuffers(forwardRenderPass.renderPass);
 
-	//forwardPipeline.createCommandBuffers(contextInfo, forwardRenderPass, vertexBuffer, indexBuffer, indices, forwardDescriptor);
-
 	//update camera
-	camera.updateDimensionsAndUBO(contextInfo.swapChainExtent);
+	camera.updateDimensions(contextInfo.swapChainExtent);
 }
 
 

@@ -1,0 +1,8 @@
+- get vr mode working
+- remove redundant pipeline binds everytime recordCommandBufferSecondary is called and test again
+- get pass-through post process(PP) working
+- get fragment barrel/chromatic aberration PP working
+- get mesh based barrel/chromatic aberration PP working
+- get radial density masking working
+- get multithreaded command recording working
+- if model has no use for some vertex attributes dont send to gpu (dont add them to begin with?)

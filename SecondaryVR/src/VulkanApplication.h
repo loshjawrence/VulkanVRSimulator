@@ -104,7 +104,7 @@ private:
 
 	void loadModels();
 	void updateUniformBuffer();
-	void updateUniformBuffer(const Model& model);
+	//void updateUniformBuffer(const Model& model);
 
 	//drawing
 	void drawFrame();
@@ -129,6 +129,8 @@ private:
 	void endRecordingPrimary(const uint32_t imageIndex);
 
 	void createSemaphores();
+	void createPipelines();
+	void destroyPipelines();
 
 	static void VulkanApplication::GLFW_MousePosCallback(GLFWwindow * window, double xpos, double ypos);
 	static void GLFW_MouseButtonCallback(GLFWwindow * window, int button, int action, int mods);
