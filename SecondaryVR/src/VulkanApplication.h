@@ -124,8 +124,9 @@ private:
 
 	void allocateCommandBuffers();
 	void addGraphicsCommandPool(const int num);
-	void beginRecordingSingle(const uint32_t imageIndex);
-	void endRecordingSingle(const uint32_t imageIndex);
+	void beginRecordingPrimary(const uint32_t imageIndex);
+	void beginRecordingPrimary(VkCommandBufferInheritanceInfo& inheritanceInfo, const uint32_t imageIndex);
+	void endRecordingPrimary(const uint32_t imageIndex);
 
 	void createSemaphores();
 

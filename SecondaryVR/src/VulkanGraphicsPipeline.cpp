@@ -33,7 +33,8 @@ void VulkanGraphicsPipeline::allocateCommandBuffers(const VulkanContextInfo& con
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.commandPool = contextInfo.graphicsCommandPools[0];
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	//allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 	allocInfo.commandBufferCount = commandBuffers.size();
 
 	if (vkAllocateCommandBuffers(contextInfo.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
@@ -106,8 +107,10 @@ void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& rend
 	rasterizer.depthClampEnable = VK_FALSE;
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
 	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	//rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
 	rasterizer.lineWidth = 1.0f;
-	rasterizer.cullMode = VK_CULL_MODE_NONE;//VK_CULL_MODE_BACK_BIT;
+	//rasterizer.cullMode = VK_CULL_MODE_NONE;
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
 	rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -202,6 +205,59 @@ VkShaderModule VulkanGraphicsPipeline::createShaderModule( const std::vector<cha
 	}
 
 	return shaderModule;
+}
+
+void VulkanGraphicsPipeline::recordCommandBufferSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
+	const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
+	const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const float time)
+{
+
+	if (!recording) {
+		beginRecordingSecondary(inheritanceInfo, imageIndex, contextInfo, renderPass);
+	} 
+
+	const VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
+	const VkDeviceSize offsets[] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
+
+	vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+	vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
+
+	const PushConstant pushconstant = { model.modelMatrix, time, model.isDynamic };
+	vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PushConstant::stages, 0, sizeof(PushConstant), (const void*)&pushconstant);
+
+	vkCmdDrawIndexed(commandBuffers[imageIndex], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+}
+
+void VulkanGraphicsPipeline::beginRecordingSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
+	uint32_t imageIndex, const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass) 
+{
+	recording = true;
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+	beginInfo.pInheritanceInfo = &inheritanceInfo;
+
+	vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo);
+
+	vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+}
+
+
+bool VulkanGraphicsPipeline::endRecordingSecondary(const uint32_t imageIndex) {
+	if (recording) {
+		recording = false;
+
+		if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to record command buffer!";
+			throw std::runtime_error(ss.str());
+		}
+		return true;
+	}
+	return false;
 }
 
 void VulkanGraphicsPipeline::recordCommandBuffer(const uint32_t imageIndex, const VulkanContextInfo& contextInfo,

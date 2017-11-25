@@ -60,6 +60,14 @@ public:
 
 	VkShaderModule createShaderModule(const std::vector<char>& code, const VulkanContextInfo& contextInfo) const;
 
+	////SECONDARY RECORDING////
+	void VulkanGraphicsPipeline::recordCommandBufferSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
+		const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
+		const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const float time);
+	void beginRecordingSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
+		const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass);
+	bool endRecordingSecondary(const uint32_t imageIndex);
+
 
 	void VulkanGraphicsPipeline::recordCommandBuffer(const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
 		const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const float time);

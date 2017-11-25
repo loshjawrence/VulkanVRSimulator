@@ -38,23 +38,26 @@ std::string convertFloatToString(double number)
 }
 
 void VulkanApplication::loadModels() {
-	const int num = 1;
+	const int num = 2;
 	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
-	const int numMeshes = 1;
-	for (int i = 0; i < num/numMeshes; i += numMeshes) {
-		const float x = rng.nextUInt(10);
-		const float y = rng.nextUInt(10);
-		const float z = rng.nextUInt(10);
+	const int numMeshesPerStride = 2;
+	for (int i = 0; i < num/numMeshesPerStride; i += numMeshesPerStride) {
+		const float x = rng.nextUInt(1);
+		const float y = rng.nextUInt(1);
+		const float z = rng.nextUInt(1);
 		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
-		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-		defaultScene[i] = { std::string("res/objects/cryteksponza/sponza.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.f)),glm::vec3(x, y, z)) };
+		defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(5.0f)),glm::vec3(y, z, x)) };
+		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 1,
-		//defaultScene[i] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f)),glm::vec3(x, y, z)) };
+		//defaultScene[i+1] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.05f)),glm::vec3(x, y, z)) };
 	}
 
 	for (auto& modelinfo : defaultScene) {//defaultScene in GlobalSettings.h
@@ -118,16 +121,44 @@ void VulkanApplication::drawFrame() {
 	//// RECORD ////
 	////////////////
 	updateUniformBuffer();
-	beginRecordingSingle(imageIndex);
+	VkCommandBufferInheritanceInfo inheritanceInfo = {};
+	beginRecordingPrimary(inheritanceInfo, imageIndex);
 	for (Model& model : models) {
-		//TODO: record only visible meshes
-		//updateUniformBuffer(model);//test against push constant
+		//record command buffers for visible objects
 		for (Mesh& mesh : model.mMeshes) {
-			forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferSingle(
-				primaryForwardCommandBuffers[imageIndex], imageIndex, contextInfo, model, mesh, time);
+		    //TODO: the pipeline selection is wrong
+			forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferSecondary(
+				inheritanceInfo, imageIndex, contextInfo, forwardRenderPass, model, mesh, time);
 		}
 	}
-	endRecordingSingle(imageIndex);
+
+	//gather vector of pipeline homogenous secondary command buffers
+	std::vector<VkCommandBuffer> forwardCommandBuffers;
+	for (int i = 0; i < forwardPipelines.size(); ++i) {
+		if (forwardPipelines[i].endRecordingSecondary(imageIndex)) {
+			forwardCommandBuffers.push_back(forwardPipelines[i].commandBuffers[imageIndex]);
+		}
+	}
+	//record into primary buffer
+	vkCmdExecuteCommands(primaryForwardCommandBuffers[imageIndex],
+		static_cast<uint32_t>(forwardCommandBuffers.size()), forwardCommandBuffers.data());
+	endRecordingPrimary(imageIndex);
+
+
+
+
+	////Unsorted Pipelines
+	//updateUniformBuffer();
+	//beginRecordingPrimary(imageIndex);
+	//for (Model& model : models) {
+	//	//TODO: record only visible meshes
+	//	for (Mesh& mesh : model.mMeshes) {
+	//      //TODO: the pipeline selection is wrong
+	//		forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferSingle(
+	//			primaryForwardCommandBuffers[imageIndex], imageIndex, contextInfo, model, mesh, time);
+	//	}
+	//}
+	//endRecordingPrimary(imageIndex);
 
 
 	VkSubmitInfo submitInfo = {};
@@ -172,7 +203,40 @@ void VulkanApplication::drawFrame() {
 	}
 }
 
-void VulkanApplication::beginRecordingSingle(const uint32_t imageIndex) {
+void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& inheritanceInfo, const uint32_t imageIndex) {
+
+	inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
+	inheritanceInfo.pNext = NULL;
+	inheritanceInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
+	inheritanceInfo.renderPass = forwardRenderPass.renderPass;
+	inheritanceInfo.occlusionQueryEnable = VK_FALSE;
+	inheritanceInfo.pipelineStatistics = 0;
+
+
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+	vkBeginCommandBuffer(primaryForwardCommandBuffers[imageIndex], &beginInfo);
+
+	VkRenderPassBeginInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = forwardRenderPass.renderPass;
+	renderPassInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
+
+	std::array<VkClearValue, 2> clearValues = {};
+	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	clearValues[1].depthStencil = { 1.0f, 0 };
+
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	renderPassInfo.pClearValues = clearValues.data();
+
+	vkCmdBeginRenderPass(primaryForwardCommandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+}
+
+void VulkanApplication::beginRecordingPrimary(const uint32_t imageIndex) {
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -197,7 +261,7 @@ void VulkanApplication::beginRecordingSingle(const uint32_t imageIndex) {
 }
 
 
-void VulkanApplication::endRecordingSingle(const uint32_t imageIndex) {
+void VulkanApplication::endRecordingPrimary(const uint32_t imageIndex) {
 	vkCmdEndRenderPass(primaryForwardCommandBuffers[imageIndex]);
 	if (vkEndCommandBuffer(primaryForwardCommandBuffers[imageIndex]) != VK_SUCCESS) {
 		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to record command buffer!";
