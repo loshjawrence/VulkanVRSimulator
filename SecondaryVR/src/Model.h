@@ -31,7 +31,7 @@ public:
 	std::string mDirectory;
 	bool culled = false;
 	glm::mat4 modelMatrix;
-	int isDynamic = 0;
+	uint32_t isDynamic = 0;
 	std::string path;
 
 	//ubo
@@ -41,7 +41,7 @@ public:
 public:
 	Model();
 	~Model();
-	Model(const std::string& path, bool isDynamic, const glm::mat4& model, VulkanContextInfo& contextInfo, 
+	Model(const std::string& path, uint32_t isDynamic, const glm::mat4& model, VulkanContextInfo& contextInfo, 
 		const VkBuffer& ubo, const VkDeviceMemory& uboMemory, const uint32_t sizeofUBOstruct);
 	Model(const std::string& path, const bool isDyamic, const glm::mat4& modelMatrix, VulkanContextInfo& contextInfo);
 

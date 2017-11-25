@@ -45,16 +45,16 @@ void VulkanApplication::loadModels() {
 		const float x = rng.nextUInt(1);
 		const float y = rng.nextUInt(1);
 		const float z = rng.nextUInt(1);
-		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
-		defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.f)),glm::vec3(x, y, z)) };
-		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(5.0f)),glm::vec3(y, z, x)) };
-		//defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+		defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(5.0f)),glm::vec3(y, z, x)) };
+		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 1,
 		//defaultScene[i+1] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.05f)),glm::vec3(x, y, z)) };
@@ -63,7 +63,6 @@ void VulkanApplication::loadModels() {
 	for (auto& modelinfo : defaultScene) {//defaultScene in GlobalSettings.h
 		models.push_back(Model(std::get<0>(modelinfo), std::get<1>(modelinfo), std::get<2>(modelinfo),
 			contextInfo, uniformBuffer, uniformBufferMemory, sizeof(UniformBufferObject)));
-		//models.push_back(Model(std::get<0>(modelinfo), std::get<1>(modelinfo), std::get<2>(modelinfo), contextInfo));
 	}
 }
 
@@ -86,14 +85,6 @@ void VulkanApplication::initVulkan() {
 
 	//setup forward pipelines from our forward shaders
 	createPipelines();
-	//for (int i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
-	//	int numImageSamplers = 0;
-	//	for (int k = 1; k < VulkanDescriptor::MAX_IMAGESAMPLERS + 1; ++k) //the first bit is for HAS_NONE so we need to ignore that one
-	//		numImageSamplers = (allShaders_ForwardPipeline[i].second & 1 << k) ? numImageSamplers + 1 : numImageSamplers;
-	//	
-	//	forwardPipelines.push_back(VulkanGraphicsPipeline(allShaders_ForwardPipeline[i].first,
-	//		forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[numImageSamplers])));
-	//}
 	VulkanBuffer::createUniformBuffer(contextInfo, sizeof(UniformBufferObject), uniformBuffer, uniformBufferMemory);
 
 	loadModels();
@@ -118,11 +109,11 @@ void VulkanApplication::drawFrame() {
 	std::vector<VkSemaphore> waitSemaphores = { imageAvailableSemaphore };
 	std::vector<VkPipelineStageFlags> waitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
+	updateUniformBuffer();
 	////////////////
 	//// RECORD ////
 	////////////////
 	//PRIMARY FILLED WITH HOMOGENOUS SECONDARY
-	//updateUniformBuffer();
 	//VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	//beginRecordingPrimary(inheritanceInfo, imageIndex);
 	//for (Model& model : models) {
@@ -150,14 +141,13 @@ void VulkanApplication::drawFrame() {
 
 
 	////Unsorted Pipelines
-	updateUniformBuffer();
 	beginRecordingPrimary(imageIndex);
 	for (Model& model : models) {
 		//TODO: record only visible meshes
 		for (Mesh& mesh : model.mMeshes) {
 	      //TODO: the pipeline selection is wrong
-			forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferSingle(
-				primaryForwardCommandBuffers[imageIndex], imageIndex, contextInfo, model, mesh, time);
+			forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferPrimary(
+				primaryForwardCommandBuffers[imageIndex], imageIndex, contextInfo, model, mesh, camera.vrmode);
 		}
 	}
 	endRecordingPrimary(imageIndex);
@@ -288,28 +278,17 @@ void VulkanApplication::createSemaphores() {
 void VulkanApplication::updateUniformBuffer() {
 	UniformBufferObject ubo = {};
 	//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view = camera.view[1];
+	ubo.view[0] = camera.view[0];
+	ubo.view[1] = camera.view[1];
 	ubo.proj = camera.proj;
 	ubo.proj[1][1] *= -1;//need for correct z-buffer order
+	ubo.time = time;
 
 	void* data;
 	vkMapMemory(contextInfo.device, uniformBufferMemory, 0, sizeof(ubo), 0, &data);
 	memcpy(data, &ubo, sizeof(ubo));
 	vkUnmapMemory(contextInfo.device, uniformBufferMemory);
 }
-
-//void VulkanApplication::updateUniformBuffer(const Model& model) {
-//	UniformBufferObject ubo = {};
-//	ubo.model = glm::rotate(model.modelMatrix, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-//	ubo.view = camera.view;
-//	ubo.proj = camera.proj;
-//	ubo.proj[1][1] *= -1;//need for correct z-buffer order
-//
-//	void* data;
-//	vkMapMemory(contextInfo.device, model.uniformBufferMemory, 0, sizeof(ubo), 0, &data);
-//	memcpy(data, &ubo, sizeof(ubo));
-//	vkUnmapMemory(contextInfo.device, model.uniformBufferMemory);
-//}
 
 void VulkanApplication::allocateCommandBuffers() {
 	primaryForwardCommandBuffers.resize(contextInfo.swapChainFramebuffers.size());

@@ -152,6 +152,20 @@ void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& rend
 	push1.stageFlags = PushConstant::stages;
 	pushContantRanges.push_back(push1);
 
+	///////////////////////
+	//// DYNAMIC STATE ////
+	///////////////////////
+	VkPipelineDynamicStateCreateInfo dynamicInfo = {};
+	std::vector<VkDynamicState> dynamicStates;
+	dynamicStates.push_back( VK_DYNAMIC_STATE_VIEWPORT );
+	dynamicStates.push_back( VK_DYNAMIC_STATE_SCISSOR );
+	//dynamicStates.push_back( VK_DYNAMIC_STATE_STENCIL_REFERENCE );//also: compare_mask?
+	dynamicInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	dynamicInfo.pNext = nullptr;
+	dynamicInfo.flags = 0;
+	dynamicInfo.dynamicStateCount = dynamicStates.size();
+	dynamicInfo.pDynamicStates = &dynamicStates[0];
+
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -180,6 +194,7 @@ void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& rend
 	pipelineInfo.renderPass = renderPass.renderPass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+	pipelineInfo.pDynamicState = &dynamicInfo;
 
 	if (vkCreateGraphicsPipelines(contextInfo.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS) {
 		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create graphics pipeline!";
@@ -209,7 +224,7 @@ VkShaderModule VulkanGraphicsPipeline::createShaderModule( const std::vector<cha
 
 void VulkanGraphicsPipeline::recordCommandBufferSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
 	const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
-	const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const float time)
+	const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const bool vrmode)
 {
 
 	if (!recording) {
@@ -224,7 +239,8 @@ void VulkanGraphicsPipeline::recordCommandBufferSecondary(const VkCommandBufferI
 
 	vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
 
-	const PushConstant pushconstant = { model.modelMatrix, time, model.isDynamic };
+	const int camIndex = 0;
+	const PushConstant pushconstant = { model.modelMatrix, camIndex << 1 | model.isDynamic };
 	vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PushConstant::stages, 0, sizeof(PushConstant), (const void*)&pushconstant);
 
 	vkCmdDrawIndexed(commandBuffers[imageIndex], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
@@ -261,7 +277,7 @@ bool VulkanGraphicsPipeline::endRecordingSecondary(const uint32_t imageIndex) {
 }
 
 void VulkanGraphicsPipeline::recordCommandBuffer(const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
-	const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const float time)
+	const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const bool vrmode)
 {
 
 	if (!recording) {
@@ -276,7 +292,8 @@ void VulkanGraphicsPipeline::recordCommandBuffer(const uint32_t imageIndex, cons
 
 	vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
 
-	const PushConstant pushconstant = { model.modelMatrix, time, model.isDynamic };
+	const int camIndex = 0;
+	const PushConstant pushconstant = { model.modelMatrix, camIndex << 1 | model.isDynamic };
 	vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PushConstant::stages, 0, sizeof(PushConstant), (const void*)&pushconstant);
 
 	vkCmdDrawIndexed(commandBuffers[imageIndex], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
@@ -326,23 +343,72 @@ bool VulkanGraphicsPipeline::endRecording(const uint32_t imageIndex) {
 }
 
 
-void VulkanGraphicsPipeline::recordCommandBufferSingle(const VkCommandBuffer& singleCmdBuffer, 
+void VulkanGraphicsPipeline::recordCommandBufferPrimary(const VkCommandBuffer& primaryCmdBuffer, 
 	const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
-	 const Model& model, const Mesh& mesh, const float time)
+	 const Model& model, const Mesh& mesh, const bool vrmode)
 {
-	vkCmdBindPipeline(singleCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+	vkCmdBindPipeline(primaryCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
 	const VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
 	const VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(singleCmdBuffer, 0, 1, vertexBuffers, offsets);
+	vkCmdBindVertexBuffers(primaryCmdBuffer, 0, 1, vertexBuffers, offsets);
+	vkCmdBindIndexBuffer(primaryCmdBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-	vkCmdBindIndexBuffer(singleCmdBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindDescriptorSets(primaryCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
 
-	vkCmdBindDescriptorSets(singleCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
+	const uint32_t camIndex = 0;
+	const PushConstant pushconstant = { model.modelMatrix, uint32_t( camIndex << 1 | model.isDynamic )};
+	vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, PushConstant::stages, 0, sizeof(PushConstant), (const void*)&pushconstant);
 
-	const PushConstant pushconstant = { model.modelMatrix, time, model.isDynamic };
-	vkCmdPushConstants(singleCmdBuffer, pipelineLayout, PushConstant::stages, 0, sizeof(PushConstant), (const void*)&pushconstant);
+	VkViewport viewport = {}; VkRect2D scissor = {};
+	getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+	vkCmdSetViewport(primaryCmdBuffer, 0, 1, &viewport);
+	vkCmdSetScissor(primaryCmdBuffer, 0, 1, &scissor);
 
-	vkCmdDrawIndexed(singleCmdBuffer, static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+	vkCmdDrawIndexed(primaryCmdBuffer, static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+
+	if (vrmode) {
+		const uint32_t camIndex = 1;
+		const PushConstant pushconstant = { model.modelMatrix, uint32_t( camIndex << 1 | model.isDynamic ) };
+		vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, PushConstant::stages, 0, sizeof(PushConstant), (const void*)&pushconstant);
+
+		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+		vkCmdSetViewport(primaryCmdBuffer, 0, 1, &viewport);
+		vkCmdSetScissor(primaryCmdBuffer, 0, 1, &scissor);
+
+		vkCmdDrawIndexed(primaryCmdBuffer, static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+
+	}
+}
+
+void VulkanGraphicsPipeline::getViewportAndScissor(VkViewport& outViewport, VkRect2D& outScissor, 
+	const VulkanContextInfo& contextInfo, const uint32_t camIndex, const bool vrmode) {
+	outViewport.minDepth = 0.0f;
+	outViewport.maxDepth = 1.0f;
+
+	if (vrmode) {
+		outViewport.width = (float)contextInfo.swapChainExtent.width * 0.5f;
+		outViewport.height = (float)contextInfo.swapChainExtent.height;
+		if (camIndex == 0) {
+			outViewport.x = 0.0f;
+			outViewport.y = 0.0f;
+			outScissor.offset = { (int32_t )outViewport.x,		(int32_t )outViewport.y };
+			outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
+		} else {
+			outViewport.x = outViewport.width;
+			outViewport.y = 0.0f;
+			outScissor.offset = { (int32_t )outViewport.x,		(int32_t )outViewport.y };
+			outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
+		}
+	} else {
+		outViewport.x = 0.0f;
+		outViewport.y = 0.0f;
+		outViewport.width = (float)contextInfo.swapChainExtent.width;
+		outViewport.height = (float)contextInfo.swapChainExtent.height;
+
+		outScissor.offset = { 0, 0 };
+		outScissor.extent = contextInfo.swapChainExtent;
+	}
 }
 
 

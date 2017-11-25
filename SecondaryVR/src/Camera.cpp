@@ -10,7 +10,6 @@ Camera::~Camera() {
 void Camera::updateComponentVectorsAndViews(bool changingModes) {
 	if (changingModes) {
 		const float shift = vrmode ? -ipd / 2.f : ipd / 2.f;//if vrmode: local left shift, else local right shift
-		//does this need to be camToWorld translation?
 		camPos += camRight*shift;
 	}
 	camFront.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
@@ -26,9 +25,7 @@ void Camera::updateComponentVectorsAndViews(bool changingModes) {
 		//right cam is left cam but local shift right by ipd
 		const glm::vec3 rightCamPos = camPos + camRight*ipd;
 		view[1] = glm::lookAt(rightCamPos, rightCamPos + camFront, camUp);
-	} else {
-		view[1] = view[0];
-	}
+	} 
 }
 
 

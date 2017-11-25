@@ -3,15 +3,14 @@
 
 
 layout(binding = 0) uniform UniformBufferObject {
-    mat4 model;
-    mat4 view;
+    mat4 view[2];
     mat4 proj;
+    float time;
 } ubo;
 
-layout (push_constant) uniform ModelInfo {
+layout (push_constant) uniform PerDrawCallInfo {
     mat4 model;
-    float time;
-    float dynamic;
+    int toggleFlags;
 } PushConstant;
 
 layout(location = 0) in vec3 inPosition;
@@ -35,8 +34,8 @@ mat4 rotationMatrix(vec3 axis, const float angle);
 mat4 rotationMatrixBasic(const float angle);
 
 void main() {
-    mat4 updatedModelMatrix = PushConstant.model * rotationMatrix(vec3(0.f, 1.f, 0.f), 0.f * PushConstant.time * 3.1415f/4.f);
-    gl_Position = ubo.proj * ubo.view * updatedModelMatrix * vec4(inPosition, 1.0);
+    mat4 updatedModelMatrix = PushConstant.model * rotationMatrix(vec3(0.f, 1.f, 0.f), 0.f * ubo.time * 3.1415f/4.f);
+    gl_Position = ubo.proj * ubo.view[0] * updatedModelMatrix * vec4(inPosition, 1.0);
 
     fragColor       = inColor;
     fragTexCoord    = inTexCoord;

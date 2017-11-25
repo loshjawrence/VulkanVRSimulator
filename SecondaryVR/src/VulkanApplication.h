@@ -28,9 +28,9 @@ namespace std {
 }
 
 struct UniformBufferObject {
-    glm::mat4 model;
-    glm::mat4 view;
+	glm::mat4 view[2];
     glm::mat4 proj;
+	float time;
 };
 
 class VulkanApplication {

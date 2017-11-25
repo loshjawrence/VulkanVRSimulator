@@ -27,8 +27,7 @@ class Model;
 
 struct PushConstant {
 	glm::mat4 modelMatrix;
-	float time;
-	float dynamic;
+	uint32_t toggleFlags;
 	static const VkShaderStageFlags stages = VK_SHADER_STAGE_VERTEX_BIT;
 };
 
@@ -63,18 +62,20 @@ public:
 	////SECONDARY RECORDING////
 	void VulkanGraphicsPipeline::recordCommandBufferSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
 		const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
-		const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const float time);
+		const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const bool vrmode);
 	void beginRecordingSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
 		const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass);
 	bool endRecordingSecondary(const uint32_t imageIndex);
 
+	void VulkanGraphicsPipeline::getViewportAndScissor(VkViewport& outViewport, VkRect2D& outScissor, 
+		const VulkanContextInfo& contextInfo, const uint32_t camIndex, const bool vrmode);
 
 	void VulkanGraphicsPipeline::recordCommandBuffer(const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
-		const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const float time);
+		const VulkanRenderPass& renderPass, const Model& model, const Mesh& mesh, const bool vrmode);
 	void beginRecording(const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass);
 	bool endRecording(const uint32_t imageIndex);
-	void VulkanGraphicsPipeline::recordCommandBufferSingle(const VkCommandBuffer& singleCmdBuffer,
-		const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const Model& model, const Mesh& mesh, const float time);
+	void VulkanGraphicsPipeline::recordCommandBufferPrimary(const VkCommandBuffer& singleCmdBuffer,
+		const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const Model& model, const Mesh& mesh, const bool vrmode);
 	void createSemaphores(const VulkanContextInfo& contextInfo);
 
 	//cleanup
