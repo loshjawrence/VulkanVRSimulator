@@ -17,6 +17,7 @@ enum class DescriptorType {
 	HAS_NONE = 0, HAS_DIFFUSE, HAS_NOR, HAS_SPEC, HAS_HEIGHT, HAS_ALL
 };
 
+
 class Mesh;
 class VulkanDescriptor {
 public:
@@ -40,9 +41,11 @@ public:
 	VkSampler sampler;
 
 	DescriptorType type = DescriptorType::HAS_DIFFUSE; 
-	int numImageSamplers = 1;
+	//int numImageSamplers = 1;
+	static const int MAX_IMAGESAMPLERS	= 4;
+	uint32_t textureMapFlags = 0;
+	int numImageSamplers = 0;
 
-	static const int MAX_IMAGESAMPLERS = 4;
 	static bool layoutsInitialized;
 	static std::vector<VkDescriptorSetLayout> layoutTypes;
 
@@ -60,6 +63,7 @@ public:
 	//void determineDescriptorType(const uint32_t diffuseSize, const uint32_t specSize, 
 	//	const uint32_t norSize, const uint32_t heightSize);
 	void determineDescriptorType(const Mesh* const mesh);
+	void determineNumImageSamplersAndTextureMapFlags(const Mesh* const mesh);
 
 	void destroyVulkanDescriptor(const VulkanContextInfo& contextInfo);
 	void destroyDescriptorPool(const VulkanContextInfo& contextInfo);

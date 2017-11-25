@@ -5,38 +5,48 @@
 #endif // !GLFW_INCLUDE_VULKAN
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-
 #include <string>
 #include <vector>
 #include <tuple>
 #include <string>
 
 
-const std::vector< std::vector<std::string> > allShaders_ForwardPipeline =
+const uint32_t HAS_NONE		= 1 << 0; 
+const uint32_t HAS_DIFFUSE	= 1 << 1; 
+const uint32_t HAS_NOR		= 1 << 2; 
+const uint32_t HAS_SPEC		= 1 << 3;
+const uint32_t HAS_HEIGHT	= 1 << 4;
+const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_ForwardPipeline =
 {
 	//No Tex shaders
-	{"src/shaders/forward.vert.spv", 
-	 "src/shaders/forwardNoTex.frag.spv"},
+	{{"src/shaders/forward.vert.spv",
+	"src/shaders/forwardNoTex.frag.spv"},
+	HAS_NONE},
 
 	//forwardDiffuse shaders
-	{"src/shaders/forward.vert.spv", 
-	 "src/shaders/forwardDiffuse.frag.spv"},
+	{{"src/shaders/forward.vert.spv",
+	"src/shaders/forwardDiffuse.frag.spv"},
+	HAS_DIFFUSE},
 
 	//forwardNor shaders
-	{"src/shaders/forward.vert.spv", 
-	 "src/shaders/forwardNor.frag.spv"},
+	{{"src/shaders/forward.vert.spv",
+	"src/shaders/forwardNor.frag.spv"},
+	HAS_NOR | HAS_DIFFUSE},
 
 	//forwardSpec shaders
-	{"src/shaders/forward.vert.spv", 
-	 "src/shaders/forwardSpec.frag.spv"},
+	{{"src/shaders/forward.vert.spv",
+	"src/shaders/forwardSpec.frag.spv"},
+	HAS_SPEC | HAS_NOR | HAS_DIFFUSE},
 
 	//forwardHeight shaders
-	{"src/shaders/forward.vert.spv", 
-	 "src/shaders/forwardHeight.frag.spv"},
+	{{"src/shaders/forward.vert.spv",
+	"src/shaders/forwardHeight.frag.spv"},
+	HAS_HEIGHT | HAS_DIFFUSE},
 
 	//forwardAll shaders
-	{"src/shaders/forward.vert.spv", 
+	{{"src/shaders/forward.vert.spv",
 	 "src/shaders/forwardAll.frag.spv"},
+	HAS_SPEC | HAS_HEIGHT | HAS_NOR | HAS_DIFFUSE},
 };
 //std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene;
 //const std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene =

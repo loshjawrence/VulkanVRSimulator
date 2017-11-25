@@ -26,7 +26,7 @@ Model::Model(const std::string& path, const bool isDyamic, const glm::mat4& mode
 
 void Model::loadModel(const std::string& path, const VulkanContextInfo& contextInfo) {
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_GenSmoothNormals | aiProcess_ValidateDataStructure);
 	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
 		std::cout << "ERROR::ASSIMP:: " << importer.GetErrorString() << std::endl;
 		return;
@@ -122,6 +122,9 @@ Mesh Model::processMesh(const aiMesh* mesh, const aiScene* scene, const VulkanCo
 	textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
 
 	//std::move this, std::move the args in the constructor
+	if (textures.size() == 0) {
+		int aieinfo = 0;
+	}
 	return Mesh(vertices, indices, textures, contextInfo);
 }
 
@@ -191,6 +194,4 @@ void Model::destroyVulkanHandles(const VulkanContextInfo& contextInfo) {
 		vkDestroyBuffer(contextInfo.device, mesh.vertexBuffer, nullptr);
 		vkFreeMemory(contextInfo.device, mesh.vertexBufferMemory, nullptr);
 	}
-
 }
-

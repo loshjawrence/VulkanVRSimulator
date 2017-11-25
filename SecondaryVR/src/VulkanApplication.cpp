@@ -38,15 +38,23 @@ std::string convertFloatToString(double number)
 }
 
 void VulkanApplication::loadModels() {
-	const int num = 10;
+	const int num = 1;
 	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
-	for (int i = 0; i < num; ++i) {
-		const float x = rng.nextUInt(15);
-		const float y = rng.nextUInt(15);
-		const float z = rng.nextUInt(15);
+	const int numMeshes = 1;
+	for (int i = 0; i < num/numMeshes; i += numMeshes) {
+		const float x = rng.nextUInt(10);
+		const float y = rng.nextUInt(10);
+		const float z = rng.nextUInt(10);
 		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-		defaultScene[i] = { std::string("res/objects/cube.obj"), 1,
-			glm::translate(glm::mat4(1.f),glm::vec3(x, y, z)) };
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
+		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
+		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+		defaultScene[i] = { std::string("res/objects/cryteksponza/sponza.obj"), 1,
+		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 1,
+		//defaultScene[i] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f)),glm::vec3(x, y, z)) };
 	}
 
 	for (auto& modelinfo : defaultScene) {//defaultScene in GlobalSettings.h
@@ -71,31 +79,23 @@ void VulkanApplication::initVulkan() {
 	//really just for initializing VulkanDescriptor::layoutTypes 
 	forwardDescriptor = VulkanDescriptor(contextInfo);
 
-	//the cookbook says framebuffers represent image subresources that correspond to renderpass attachments(input attachments and render targets)
-	//add a framebuffer component to VulkanRenderPass?
-	//keep swapchain related things with the swapchain
-
 	contextInfo.createSwapChainFramebuffers(forwardRenderPass.renderPass);
 
-	//forwardPipeline = VulkanGraphicsPipeline(allShaders_ForwardPipeline[1],
-	//	forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[1]));
+	//setup forward pipelines from our forward shaders
 	for (int i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
-		if (i >= 2) {//height
-			//TODO: make the pack of shader info include descriptor type and make a descriptor type to layoutType conversion function
-			forwardPipelines.push_back(VulkanGraphicsPipeline(allShaders_ForwardPipeline[i],
-				forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[i - 1])));
-		} else {
-			forwardPipelines.push_back(VulkanGraphicsPipeline(allShaders_ForwardPipeline[i],
-				forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[i])));
-		}
-
+		int numImageSamplers = 0;
+		for (int k = 1; k < VulkanDescriptor::MAX_IMAGESAMPLERS + 1; ++k) //the first bit is for HAS_NONE so we need to ignore that one
+			numImageSamplers = (allShaders_ForwardPipeline[i].second & 1 << k) ? numImageSamplers + 1 : numImageSamplers;
+		
+		forwardPipelines.push_back(VulkanGraphicsPipeline(allShaders_ForwardPipeline[i].first,
+			forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[numImageSamplers])));
 	}
-
 	VulkanBuffer::createUniformBuffer(contextInfo, sizeof(UniformBufferObject), uniformBuffer, uniformBufferMemory);
 
 	loadModels();
 
 	createSemaphores();
+	allocateCommandBuffers();
 }
 
 
@@ -111,61 +111,25 @@ void VulkanApplication::drawFrame() {
 		throw std::runtime_error(ss.str());
 	}
 
-	//std::vector<VkSemaphore> waitSemaphores = { imageAvailableSemaphore };
-	//finished signals for each stage, successive stages need to wait on the previous finish
-	//std::vector<VkSemaphore> signalSemaphores = { forwardRenderFinishedSemaphore };
+	std::vector<VkSemaphore> waitSemaphores = { imageAvailableSemaphore };
+	std::vector<VkPipelineStageFlags> waitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
-	//NEW
-	std::vector<VkSemaphore> waitSemaphores;
-	std::vector<VkSemaphore> signalSemaphores;
-	std::vector<VkPipelineStageFlags> waitStages;
 	////////////////
 	//// RECORD ////
 	////////////////
 	updateUniformBuffer();
+	beginRecordingSingle(imageIndex);
 	for (Model& model : models) {
-	//record command buffers for visible objects
+		//TODO: record only visible meshes
 		//updateUniformBuffer(model);//test against push constant
 		for (Mesh& mesh : model.mMeshes) {
-			//forwardPipeline.recordCommandBufferTEST(imageIndex, contextInfo, forwardRenderPass, model, mesh, time);
-
-			//NEW
-			forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferTEST(imageIndex, contextInfo,
-				forwardRenderPass, model, mesh, time);
+			forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferSingle(
+				primaryForwardCommandBuffers[imageIndex], imageIndex, contextInfo, model, mesh, time);
 		}
 	}
-	//forwardPipeline.endRecording(imageIndex);
+	endRecordingSingle(imageIndex);
 
-	//NEW
-	std::vector<VkCommandBuffer> forwardCommandBuffers;
-	for (int i = 0; i < forwardPipelines.size(); ++i) {
-		if (forwardPipelines[i].endRecording(imageIndex)) {
-			forwardCommandBuffers.push_back(forwardPipelines[i].commandBuffers[imageIndex]);
-			waitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
-			waitSemaphores.push_back(imageAvailableSemaphore);
-			signalSemaphores.push_back(forwardPipelines[i].renderFinishedSemaphore);
-		}
-	}
 
-	//forwardPipeline.recordCommandBuffer(imageIndex, contextInfo, forwardRenderPass, vertexBuffer, indexBuffer, indices, models[0].mMeshes[0].descriptor);
-	/////////////////
-	//// SUBMIT /////
-	/////////////////
-	//VkSubmitInfo submitInfo = {};
-	//submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-	//VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	//submitInfo.waitSemaphoreCount = 1;
-	//submitInfo.pWaitSemaphores = &waitSemaphores[0];
-	//submitInfo.pWaitDstStageMask = waitStages;
-
-	//submitInfo.commandBufferCount = 1;
-	//submitInfo.pCommandBuffers = &forwardPipeline.commandBuffers[imageIndex];
-
-	//submitInfo.signalSemaphoreCount = 1;
-	//submitInfo.pSignalSemaphores = &signalSemaphores[0];
-
-	//NEW
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
@@ -173,9 +137,10 @@ void VulkanApplication::drawFrame() {
 	submitInfo.pWaitSemaphores = &waitSemaphores[0];
 	submitInfo.pWaitDstStageMask = &waitStages[0];
 
-	submitInfo.commandBufferCount = forwardCommandBuffers.size();
-	submitInfo.pCommandBuffers = &forwardCommandBuffers[0];
+	submitInfo.commandBufferCount = 1;
+	submitInfo.pCommandBuffers = &primaryForwardCommandBuffers[imageIndex];
 
+	std::vector<VkSemaphore> signalSemaphores = { forwardRenderFinishedSemaphore };
 	submitInfo.signalSemaphoreCount = signalSemaphores.size();
 	submitInfo.pSignalSemaphores = &signalSemaphores[0];
 
@@ -187,10 +152,6 @@ void VulkanApplication::drawFrame() {
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-	//presentInfo.waitSemaphoreCount = 1;
-	//presentInfo.pWaitSemaphores = &signalSemaphores.back();
-
-	//NEW
 	presentInfo.waitSemaphoreCount = signalSemaphores.size();
 	presentInfo.pWaitSemaphores = &signalSemaphores[0];
 
@@ -210,6 +171,40 @@ void VulkanApplication::drawFrame() {
 		throw std::runtime_error(ss.str());
 	}
 }
+
+void VulkanApplication::beginRecordingSingle(const uint32_t imageIndex) {
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+	vkBeginCommandBuffer(primaryForwardCommandBuffers[imageIndex], &beginInfo);
+
+	VkRenderPassBeginInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = forwardRenderPass.renderPass;
+	renderPassInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
+
+	std::array<VkClearValue, 2> clearValues = {};
+	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
+	clearValues[1].depthStencil = { 1.0f, 0 };
+
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	renderPassInfo.pClearValues = clearValues.data();
+
+	vkCmdBeginRenderPass(primaryForwardCommandBuffers[imageIndex], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+}
+
+
+void VulkanApplication::endRecordingSingle(const uint32_t imageIndex) {
+	vkCmdEndRenderPass(primaryForwardCommandBuffers[imageIndex]);
+	if (vkEndCommandBuffer(primaryForwardCommandBuffers[imageIndex]) != VK_SUCCESS) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to record command buffer!";
+		throw std::runtime_error(ss.str());
+	}
+}
+
 
 
 void VulkanApplication::createSemaphores() {
@@ -250,8 +245,39 @@ void VulkanApplication::updateUniformBuffer(const Model& model) {
 	vkUnmapMemory(contextInfo.device, model.uniformBufferMemory);
 }
 
-void VulkanApplication::recordAndSubmitForwardRendering(const uint32_t imageIndex) {
+void VulkanApplication::allocateCommandBuffers() {
+	primaryForwardCommandBuffers.resize(contextInfo.swapChainFramebuffers.size());
+	addGraphicsCommandPool(primaryForwardCommandBuffers.size());
+	//clean up before record? no need, state is not maintained
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = contextInfo.graphicsCommandPools[0];
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandBufferCount = primaryForwardCommandBuffers.size();
+
+	if (vkAllocateCommandBuffers(contextInfo.device, &allocInfo, primaryForwardCommandBuffers.data()) != VK_SUCCESS) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to alloc pipeline command buffers!";
+		throw std::runtime_error(ss.str());
+	}
 }
+
+void VulkanApplication::addGraphicsCommandPool(const int num) {
+	VkCommandPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = contextInfo.graphicsFamily;
+	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+	for (int i = 0; i < num; ++i) {
+		VkCommandPool commandPool;
+		graphicsCommandPools.push_back(commandPool);
+
+		if (vkCreateCommandPool(contextInfo.device, &poolInfo, nullptr, &graphicsCommandPools.back()) != VK_SUCCESS) {
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create graphics command pool!";
+			throw std::runtime_error(ss.str());
+		}
+	}
+}
+
 
 void VulkanApplication::mainLoop() {
 	while (!glfwWindowShouldClose(window)) {

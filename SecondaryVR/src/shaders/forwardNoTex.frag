@@ -10,15 +10,13 @@ layout(location = 4) in vec3 fragBiTan;
 layout(location = 0) out vec4 outColor;
 
 void main() {
-//	const vec3 lightdir = vec3(0.f, 1.f, 0.f);
-//	const vec3 fragColor = vec3(1.f, 1.f, 1.f);
-//	const float ambient = 0.1f;
-//	const vec3 lambert = clamp(color * dot(lightdir, worldnor), ambient, 1.f);
-//	FragColor = vec4(lambert.xyz, 1.f);
-	const vec3 lightdir = vec3(0.f, 1.f, 0.f);
+    const vec3 color = vec3(1.f, 1.f, 1.f);
+	const vec3 lightdir = vec3(1.f, 1.f, 1.f);
 	const float ambient = 0.1f;
-	const vec3 lambert = clamp(fragColor * dot(lightdir, fragNor), ambient, 1.f);
+	const vec3 lambert = clamp(color * dot(normalize(lightdir), fragNor), ambient, 1.f);
 
-    outColor = vec4(lambert.xyz,1.f);
+//    outColor = vec4(lambert.xyz,1.f);
+    outColor = vec4(color.xyz,1.f);
+//    outColor = vec4(fragNor.xyz,1.f);
 }
 

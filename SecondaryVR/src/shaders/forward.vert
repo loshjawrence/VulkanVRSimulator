@@ -35,15 +35,14 @@ mat4 rotationMatrix(vec3 axis, const float angle);
 mat4 rotationMatrixBasic(const float angle);
 
 void main() {
-//    gl_Position = ubo.proj * ubo.view * ubo.model * vec4(inPosition, 1.0);
-    gl_Position = ubo.proj * ubo.view * PushConstant.model *
-        rotationMatrixBasic(PushConstant.time * 3.1415f/4.f) * vec4(inPosition, 1.0);
+    mat4 updatedModelMatrix = PushConstant.model * rotationMatrix(vec3(0.f, 1.f, 0.f), 0.f * PushConstant.time * 3.1415f/4.f);
+    gl_Position = ubo.proj * ubo.view * updatedModelMatrix * vec4(inPosition, 1.0);
 
     fragColor       = inColor;
     fragTexCoord    = inTexCoord;
-	fragNor         = normalize(transpose(inverse(mat3(PushConstant.model))) * inNor);
-    fragTan         = normalize(mat3(PushConstant.model) * inTan);
-    fragBiTan       = normalize(mat3(PushConstant.model) * inBiTan);
+	fragNor         = normalize(transpose(inverse(mat3(updatedModelMatrix))) * inNor);
+    fragTan         = normalize(mat3(updatedModelMatrix) * inTan);
+    fragBiTan       = normalize(mat3(updatedModelMatrix) * inBiTan);
 
 }
 

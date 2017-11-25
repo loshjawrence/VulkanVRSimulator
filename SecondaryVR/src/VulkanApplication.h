@@ -48,16 +48,18 @@ private:
 	//RNG
 	pcg32 rng = pcg32(17);
 
-	//TODO: should belong in Model/Mesh
 	std::vector<Model> models;
- //   std::vector<Vertex> vertices;
- //   std::vector<uint32_t> indices;
- //   VkBuffer vertexBuffer;
- //   VkDeviceMemory vertexBufferMemory;
- //   VkBuffer indexBuffer;
- //   VkDeviceMemory indexBufferMemory;
-	//VulkanImage modelTexture;
 
+	//submitting a vector of primary buffers didn't seem to work, let try recording all in one:
+	//beginbuf->beginpass->record all->endpass->endbuf
+	std::vector<VkCommandBuffer> primaryForwardCommandBuffers;
+
+	//commandPools
+	//generally only need 1, but if you want to do multithreaded command recording each thread needs its own pool
+	std::vector<VkCommandPool> graphicsCommandPools;
+	std::vector<VkCommandPool> computeCommandPools;
+
+	
 	//camera
 	Camera camera = Camera();
 	bool firstmouse = true;
@@ -106,7 +108,6 @@ private:
 
 	//drawing
 	void drawFrame();
-	void recordAndSubmitForwardRendering(const uint32_t imageIndex);
 
 	//window resized need to recreate swap chain
 	void cleanupSwapChain();
@@ -121,6 +122,10 @@ private:
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, 
 		uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData);
 
+	void allocateCommandBuffers();
+	void addGraphicsCommandPool(const int num);
+	void beginRecordingSingle(const uint32_t imageIndex);
+	void endRecordingSingle(const uint32_t imageIndex);
 
 	void createSemaphores();
 

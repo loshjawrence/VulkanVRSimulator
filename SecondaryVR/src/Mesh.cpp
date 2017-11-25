@@ -46,19 +46,11 @@ void Mesh::createDescriptor(const VulkanContextInfo& contextInfo, const VkBuffer
 		}
 	}
 
-	//TODO:select the example descrptor on which we will base the member descriptor
-	//if there's no supporting example descriptor(and therefore no supporting pipeline)
-	//create a new one just for this mesh?
-	//descriptor.determineDescriptorType(diffuseindices.size(), specindices.size(), norindices.size(), heightindices.size());
-	descriptor.determineDescriptorType(this);
-
-
+	descriptor.determineNumImageSamplersAndTextureMapFlags(this);
 	//VulkanDescriptor has static members for the differnt layouts which get created at init
 	//the set is created based on the type
-
 	descriptor.createDescriptorSetLayout(contextInfo);
 	descriptor.createDescriptorPool(contextInfo);//each should have their own pool
-	//descriptor.createDescriptorSet(contextInfo,ubo,sizeofUBOstruct,mTextures[diffuseindices[0]].vulkanImage);
 	descriptor.createDescriptorSet(contextInfo,ubo,sizeofUBOstruct,this);
 
 }
