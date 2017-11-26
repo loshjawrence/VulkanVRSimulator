@@ -1,5 +1,4 @@
 #pragma once
-
 #ifndef GLFW_INCLUDE_VULKAN
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -8,6 +7,7 @@
 #include "VulkanContextInfo.h"
 #include "VulkanDescriptor.h"
 #include "VulkanRenderPass.h"
+#include "VulkanImage.h"
 #include "Vertex.h"
 #include <vector>
 #include <string>
@@ -25,19 +25,25 @@
 class Mesh;
 class Model;
 
-struct ForwardPushConstant {
+struct PostProcessPushConstant {
 	glm::mat4 modelMatrix;
 	uint32_t toggleFlags;
 	static const VkShaderStageFlags stages = VK_SHADER_STAGE_VERTEX_BIT;
 };
 
-class VulkanGraphicsPipeline {
+class PostProcessPipeline {
 public:
 	std::vector<std::string> shaderpaths;
 	VkPipeline graphicsPipeline;
 	VkPipelineLayout pipelineLayout;
 
 	std::vector<VkCommandBuffer> commandBuffers;
+	std::vector<VkCommandPool> commandPools;
+
+	//NEW
+	std::vector<VulkanImage> outputImages;//give to this stage's framebuffers and next stage's inputDescriptors
+	std::vector<VkFramebuffer> framebuffers;
+	std::vector<VulkanDescriptor> inputDescriptors;
 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
@@ -46,23 +52,32 @@ public:
 	bool recording = false;
 
 public:
-	VulkanGraphicsPipeline();
-	VulkanGraphicsPipeline(const std::vector<std::string>& shaderspaths, const VulkanRenderPass& renderPass,
+	PostProcessPipeline();
+	PostProcessPipeline(const std::vector<std::string>& shaderspaths, const VulkanRenderPass& renderPass,
 		const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts);
 
-	~VulkanGraphicsPipeline();
+	~PostProcessPipeline();
+
+	//NEW
+	void createOutputImages(const VulkanContextInfo& contextInfo);
+	void addCommandPools(const VulkanContextInfo& contextInfo, const uint32_t num);
+	void createFramebuffers(const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass);
+	void createInputDescriptors(const VulkanContextInfo& contextInfo, const std::vector<VulkanImage> vulkanImages);
+	void createStaticCommandBuffers(const VulkanContextInfo& contextInfo,
+		const VulkanRenderPass& renderPass, const Mesh& mesh, const VulkanDescriptor& descriptor);//static since no dynamic input, mesh is just quad or triangle
+
 
 	void allocateCommandBuffers(const VulkanContextInfo& contextInfo);
 
-	void createGraphicsPipeline(const VulkanRenderPass& renderPass, const VulkanContextInfo& contextInfo, 
+	void createPipeline(const VulkanRenderPass& renderPass, const VulkanContextInfo& contextInfo, 
 		const VkDescriptorSetLayout* setLayouts);
 
 	VkShaderModule createShaderModule(const std::vector<char>& code, const VulkanContextInfo& contextInfo) const;
 
 	////SECONDARY RECORDING////
 	void recordCommandBufferSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
-		const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
-		const Model& model, const Mesh& mesh, const bool vrmode);
+		const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const Model& model, 
+		const Mesh& mesh, const bool vrmode);
 	void beginRecordingSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
 		const uint32_t imageIndex, const VulkanContextInfo& contextInfo);
 	bool endRecordingSecondary(const uint32_t imageIndex);
@@ -81,4 +96,5 @@ public:
 	void destroyPipelineSemaphores(const VulkanContextInfo& contextInfo);
 	void destroyVulkanPipeline(const VulkanContextInfo& contextInfo);
 };
+
 

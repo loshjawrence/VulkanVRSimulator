@@ -1,8 +1,18 @@
-- get vr mode working
-- remove redundant pipeline binds everytime recordCommandBufferSecondary is called and test again
-- get pass-through post process(PP) working
+see if secondary command buffers with homogenous pipeline is better than one with mixed
+get vr working
+get dynamic viewport and camera working for single traversal through scene
+remove redundant pipeline binds everytime recordCommandBufferSecondary is called and test again
+fix pipeline selection since it's wrong
+try input attachment option for pp desc set layout(cant since need more than 1 location for read)
+- get pass-through post process(PP) working, also need offscreenTriangle
+- can PostProcessPipeline be merged with Pipeline? is outputImage the only diff?
 - get fragment barrel/chromatic aberration PP working
 - get mesh based barrel/chromatic aberration PP working
 - get radial density masking working
+- get MSAA working
 - get multithreaded command recording working
 - if model has no use for some vertex attributes dont send to gpu (dont add them to begin with?)
+- add a descriptor type to reduce number of functions in VulkanDescriptor?
+- associate command pools with the correct abstraction
+- try combining the descriptor layouts into sets? is there benefit to this?
+- lookup how to do single draw call vr

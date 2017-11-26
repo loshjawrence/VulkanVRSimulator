@@ -33,9 +33,14 @@ out gl_PerVertex {
 mat4 rotationMatrix(vec3 axis, const float angle);
 mat4 rotationMatrixBasic(const float angle);
 
+const int camBit = 1;
+const int dynamicBit = 0;
 void main() {
-    mat4 updatedModelMatrix = PushConstant.model * rotationMatrix(vec3(0.f, 1.f, 0.f), 0.f * ubo.time * 3.1415f/4.f);
-    gl_Position = ubo.proj * ubo.view[0] * updatedModelMatrix * vec4(inPosition, 1.0);
+    const int isDynamic = int( (PushConstant.toggleFlags & 1 << dynamicBit) >> dynamicBit);
+    const int camIndex = int( (PushConstant.toggleFlags & 1 << camBit) >> camBit);
+
+    mat4 updatedModelMatrix = PushConstant.model * rotationMatrix(vec3(0.f, 1.f, 0.f), isDynamic * ubo.time * 3.1415f/4.f);
+    gl_Position = ubo.proj * ubo.view[camIndex] * updatedModelMatrix * vec4(inPosition, 1.0);
 
     fragColor       = inColor;
     fragTexCoord    = inTexCoord;

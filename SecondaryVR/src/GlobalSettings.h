@@ -30,23 +30,40 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Fo
 
 	//forwardNor shaders
 	{{"src/shaders/forward.vert.spv",
-	"src/shaders/forwardNor.frag.spv"},
+	"src/shaders/forwardDiffuseNor.frag.spv"},
 	HAS_NOR | HAS_DIFFUSE},
-
-	//forwardSpec shaders
-	{{"src/shaders/forward.vert.spv",
-	"src/shaders/forwardSpec.frag.spv"},
-	HAS_SPEC | HAS_NOR | HAS_DIFFUSE},
 
 	//forwardHeight shaders
 	{{"src/shaders/forward.vert.spv",
-	"src/shaders/forwardHeight.frag.spv"},
+	"src/shaders/forwardDiffuseHeight.frag.spv"},
 	HAS_HEIGHT | HAS_DIFFUSE},
 
-	//forwardAll shaders
+	//forwardSpec shaders
+	{{"src/shaders/forward.vert.spv",
+	"src/shaders/forwardSpecNor.frag.spv"},
+	HAS_SPEC | HAS_NOR | HAS_DIFFUSE},
+
+	//forwardSpec shaders
+	{{"src/shaders/forward.vert.spv",
+	"src/shaders/forwardSpecHeight.frag.spv"},
+	HAS_SPEC | HAS_HEIGHT | HAS_DIFFUSE},
+
+	//forwardAll shaders (would a shader have both nor and height?)
 	{{"src/shaders/forward.vert.spv",
 	 "src/shaders/forwardAll.frag.spv"},
 	HAS_SPEC | HAS_HEIGHT | HAS_NOR | HAS_DIFFUSE},
+};
+
+
+//name of shaders and number of input sampler images
+const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_PostProcessPipeline =
+{
+	//passthrough: TEST
+	{{"src/shaders/ppPassthrough.vert.spv",
+	"src/shaders/ppPassthrough.frag.spv"},
+	1},
+
+
 };
 //std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene;
 //const std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene =

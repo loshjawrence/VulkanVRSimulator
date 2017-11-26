@@ -8,7 +8,7 @@
 Model::Model() { }
 Model::~Model() { }
 
-Model::Model(const std::string& path, const uint32_t isDyamic, const glm::mat4& modelMatrix, VulkanContextInfo& contextInfo, 
+Model::Model(const std::string& path, const uint32_t isDynamic, const glm::mat4& modelMatrix, VulkanContextInfo& contextInfo, 
 	const VkBuffer& ubo, const VkDeviceMemory& uboMemory, const uint32_t sizeofUBOstruct)
 	:path(path), isDynamic(isDynamic), modelMatrix(modelMatrix)
 {

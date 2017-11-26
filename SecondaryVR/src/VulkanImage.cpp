@@ -29,6 +29,9 @@ VulkanImage::VulkanImage(const IMAGETYPE& imagetype, const VkExtent2D& extent, c
 		createDepthImage(contextInfo);
 	} else if (imagetype == IMAGETYPE::TEXTURE) {
 		createTextureImage(contextInfo);
+	} else if (imagetype == IMAGETYPE::COLOR_ATTACHMENT) {
+		createColorAttachmentImage(contextInfo);
+		//sceneImageStage->createImages(VK_FORMAT_R16G16B16A16_SFLOAT, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	}
 }
 
@@ -47,6 +50,12 @@ void VulkanImage::operator=(const VulkanImage& rightside) {
 	sampler			= rightside.sampler;
 
 	//no need for cascading assigment so no need to return *this
+}
+
+void VulkanImage::createColorAttachmentImage(const VulkanContextInfo& contextInfo) {
+	createImage(contextInfo);
+	createImageView(contextInfo);
+	transitionImageLayout(contextInfo, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
 void VulkanImage::createDepthImage(const VulkanContextInfo& contextInfo) {
@@ -105,7 +114,12 @@ void VulkanImage::createImage(const VulkanContextInfo& contextInfo) {
 		tiling = VK_IMAGE_TILING_OPTIMAL;
 		usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 		properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	} else if (imagetype == IMAGETYPE::COLOR_ATTACHMENT) {
+		tiling = VK_IMAGE_TILING_OPTIMAL;
+		usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+		properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	}
+
 
 	VkImageCreateInfo imageInfo = {};
 	imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -147,7 +161,7 @@ void VulkanImage::createImageView(const VulkanContextInfo& contextInfo) {
 	VkImageAspectFlags aspectFlags;
 	if (imagetype == IMAGETYPE::DEPTH) {
 		aspectFlags = VK_IMAGE_ASPECT_DEPTH_BIT;
-	} else if (imagetype == IMAGETYPE::TEXTURE) {
+	} else if (imagetype == IMAGETYPE::TEXTURE || imagetype == IMAGETYPE::COLOR_ATTACHMENT) {
 		aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT;
 	}
 
@@ -214,6 +228,11 @@ void VulkanImage::transitionImageLayout(const VulkanContextInfo& contextInfo,
 		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	} else if (oldLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+		barrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 	} else {
 		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": unsupported layout transition!";
 		throw std::runtime_error(ss.str());

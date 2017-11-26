@@ -14,7 +14,7 @@ enum class MovementDirection {
 class Camera {
 public:
 	const glm::vec3 worldUp = glm::vec3(0.f, 1.f, 0.f);
-	float ipd = 1.00f;
+	float ipd = 0.005f;//assets need to be made with scale in mind so this is just tuned to look reasonable
 	float movementspeed = 10.f;
 	float looksensitivity = 0.5f;
 	float yaw = -90.f;//about y, looking down local -z

@@ -12,7 +12,7 @@
 class VulkanContextInfo;
 
 enum class IMAGETYPE {
-	DEPTH=0, TEXTURE=1,
+	DEPTH=0, TEXTURE, COLOR_ATTACHMENT
 };
 
 class VulkanImage {
@@ -35,6 +35,7 @@ public:
 	~VulkanImage();
 
 	void operator=(const VulkanImage& rightside);
+	void createColorAttachmentImage(const VulkanContextInfo& contextInfo);
 	void createDepthImage(const VulkanContextInfo& contextInfo);
 	void createTextureImage(const VulkanContextInfo& contextInfo);
 	void createImage(const VulkanContextInfo& contextInfo);

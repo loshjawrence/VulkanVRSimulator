@@ -39,24 +39,24 @@ std::string convertFloatToString(double number)
 
 void VulkanApplication::loadModels() {
 	const int num = 2;
-	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
 	const int numMeshesPerStride = 2;
+	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
 	for (int i = 0; i < num/numMeshesPerStride; i += numMeshesPerStride) {
-		const float x = rng.nextUInt(1);
-		const float y = rng.nextUInt(1);
-		const float z = rng.nextUInt(1);
-		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
-		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		const float x = static_cast<float>(rng.nextUInt(3));
+		const float y = static_cast<float>(rng.nextUInt(3));
+		const float z = static_cast<float>(rng.nextUInt(3));
+		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
+		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(5.0f)),glm::vec3(y, z, x)) };
 		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.f)),glm::vec3(x, y, z)) };
-		defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(5.0f)),glm::vec3(y, z, x)) };
-		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
-		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 1,
-		//defaultScene[i+1] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
+		//defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
+		//defaultScene[i+1] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.05f)),glm::vec3(x, y, z)) };
 	}
 
@@ -80,6 +80,7 @@ void VulkanApplication::initVulkan() {
 
 	//really just for initializing VulkanDescriptor::layoutTypes 
 	forwardDescriptor = VulkanDescriptor(contextInfo);
+	//VulkanDescriptor heyforwardDescriptor = VulkanDescriptor(contextInfo);
 
 	contextInfo.createSwapChainFramebuffers(forwardRenderPass.renderPass);
 
@@ -120,8 +121,9 @@ void VulkanApplication::drawFrame() {
 	//	//record command buffers for visible objects
 	//	for (Mesh& mesh : model.mMeshes) {
 	//	    //TODO: the pipeline selection is wrong
-	//		forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferSecondary(
-	//			inheritanceInfo, imageIndex, contextInfo, forwardRenderPass, model, mesh, time);
+	//		const uint32_t index = getForwardPipelineIndexFromTextureMapFlags(mesh.descriptor.textureMapFlags);
+	//		forwardPipelines[index].recordCommandBufferSecondary(
+	//			inheritanceInfo, imageIndex, contextInfo, model, mesh, camera.vrmode);
 	//	}
 	//}
 
@@ -140,13 +142,14 @@ void VulkanApplication::drawFrame() {
 
 
 
-	////Unsorted Pipelines
+	//Primary bufer recorded directly with unsorted pipelines
 	beginRecordingPrimary(imageIndex);
 	for (Model& model : models) {
 		//TODO: record only visible meshes
 		for (Mesh& mesh : model.mMeshes) {
 	      //TODO: the pipeline selection is wrong
-			forwardPipelines[mesh.descriptor.numImageSamplers].recordCommandBufferPrimary(
+			const uint32_t index = getForwardPipelineIndexFromTextureMapFlags(mesh.descriptor.textureMapFlags);
+			forwardPipelines[index].recordCommandBufferPrimary(
 				primaryForwardCommandBuffers[imageIndex], imageIndex, contextInfo, model, mesh, camera.vrmode);
 		}
 	}
@@ -388,7 +391,7 @@ void VulkanApplication::cleanup() {
 	}
 
 	//clean up pipeline semaphores
-	forwardPipeline.destroyPipelineSemaphores(contextInfo);
+	destroyPipelinesSemaphores();
 
 	//clean up command pools
 	contextInfo.destroyCommandPools();
@@ -409,24 +412,49 @@ void VulkanApplication::destroyPipelines() {
 	}
 }
 
+void VulkanApplication::destroyPipelinesSemaphores() {
+	for (auto& pipeline : forwardPipelines) {
+		pipeline.destroyPipelineSemaphores(contextInfo);
+	}
+	for (auto& pipeline : postProcessPipelines) {
+		pipeline.destroyPipelineSemaphores(contextInfo);
+	}
+}
+
 void VulkanApplication::createPipelines() {
 	//forwardPipelines
 	forwardPipelines.resize(allShaders_ForwardPipeline.size());
-	for (int i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
+	textureMapFlagsToForwardPipelineIndex.resize(allShaders_ForwardPipeline.size());
+	for (uint32_t i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
 		int numImageSamplers = 0;
 		for (int k = 1; k < VulkanDescriptor::MAX_IMAGESAMPLERS + 1; ++k) //the first bit is for HAS_NONE so we need to ignore that one
 			numImageSamplers = (allShaders_ForwardPipeline[i].second & 1 << k) ? numImageSamplers + 1 : numImageSamplers;
 
+		textureMapFlagsToForwardPipelineIndex[i] = allShaders_ForwardPipeline[i].second;//create the mapping based on shaders we have
 		forwardPipelines[i] = VulkanGraphicsPipeline(allShaders_ForwardPipeline[i].first,
 			forwardRenderPass, contextInfo, &(VulkanDescriptor::layoutTypes[numImageSamplers]));
 	}
+
+	//post process pipelines
+	//postProcessPipelines.reserve(allShaders_PostProcessPipeline.size());
+	//for (uint32_t i = 0; i < allShaders_PostProcessPipeline.size(); ++i) {
+	//	const uint32_t numImageSamplers = allShaders_PostProcessPipeline[i].second;
+	//	postProcessPipelines[i] = PostProcessPipeline(allShaders_PostProcessPipeline[i].first,
+	//		forwardRenderPass, contextInfo, &(VulkanDescriptor::postProcessLayoutTypes[numImageSamplers-1]));
+	//}
+
 }
 
+uint32_t VulkanApplication::getForwardPipelineIndexFromTextureMapFlags(const uint32_t textureMapFlags) {
+	for (uint32_t i = 0; i < textureMapFlagsToForwardPipelineIndex.size(); ++i) {
+		if ((textureMapFlags & textureMapFlagsToForwardPipelineIndex[i]) == textureMapFlags) {
+			return i;
+		}
+	}
+}
 void VulkanApplication::cleanupSwapChain() {
 	contextInfo.depthImage.destroyVulkanImage(contextInfo);
 
-	//forwardPipeline.destroyVulkanPipeline(contextInfo);
-	//NEW
 	destroyPipelines();
 
 	forwardRenderPass.destroyRenderPass(contextInfo);
@@ -445,8 +473,9 @@ void VulkanApplication::recreateSwapChain() {
 
 
 	forwardRenderPass.createRenderPass(contextInfo);
+	forwardRenderPass.createRenderPassPostProcess(contextInfo);
+	forwardRenderPass.createRenderPassPostProcessPresent(contextInfo);
 
-	//forwardPipeline.createGraphicsPipeline(forwardRenderPass, contextInfo, &forwardDescriptor.descriptorSetLayout);
 	//NEW
 	createPipelines();
 

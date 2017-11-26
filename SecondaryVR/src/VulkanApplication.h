@@ -12,10 +12,11 @@
 #include "VulkanRenderPass.h"
 #include "VulkanDescriptor.h"
 #include "VulkanGraphicsPipeline.h"
+#include "PostProcessPipeline.h"
 #include "VulkanImage.h"
 #include "VulkanBuffer.h"
 #include "Model.h"
-#include "pcg32.h"
+#include "../dependencies/pcg32.h"
 
 #include "Camera.h"
 
@@ -52,6 +53,7 @@ private:
 
 	//submitting a vector of primary buffers didn't seem to work, let try recording all in one:
 	//beginbuf->beginpass->record all->endpass->endbuf
+	std::vector<uint32_t> textureMapFlagsToForwardPipelineIndex;//element is textureMapFlags index is pipeline index
 	std::vector<VkCommandBuffer> primaryForwardCommandBuffers;
 
 	//commandPools
@@ -72,10 +74,10 @@ private:
 
 	//Vulkan components
 	VulkanContextInfo contextInfo;
-	VulkanGraphicsPipeline forwardPipeline;
 	std::vector<VulkanGraphicsPipeline> forwardPipelines;
 	VulkanRenderPass forwardRenderPass;
 	VulkanDescriptor forwardDescriptor;
+	std::vector<PostProcessPipeline> postProcessPipelines;
 
 	//used for fps tracker
 	double oldtime = 0.f;
@@ -113,6 +115,9 @@ private:
 	void cleanupSwapChain();
 	void recreateSwapChain();
 
+	//helper
+	uint32_t getForwardPipelineIndexFromTextureMapFlags(const uint32_t textureMapFlags);
+
 	//callbacks
 	void setupDebugCallback();
 	static void onWindowResized(GLFWwindow* window, int width, int height);
@@ -131,6 +136,7 @@ private:
 	void createSemaphores();
 	void createPipelines();
 	void destroyPipelines();
+	void destroyPipelinesSemaphores();
 
 	static void VulkanApplication::GLFW_MousePosCallback(GLFWwindow * window, double xpos, double ypos);
 	static void GLFW_MouseButtonCallback(GLFWwindow * window, int button, int action, int mods);

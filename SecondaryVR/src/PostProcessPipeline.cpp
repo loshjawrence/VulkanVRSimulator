@@ -1,8 +1,8 @@
 #pragma once
-#include "VulkanGraphicsPipeline.h"
+#include "PostProcessPipeline.h"
 
+#include "Model.h"
 #include "Utils.h"
-#include "Model.h";
 
 #include <stdexcept>
 #include <iostream>
@@ -10,29 +10,83 @@
 #include <string>
 
 
-VulkanGraphicsPipeline::VulkanGraphicsPipeline() {
+PostProcessPipeline::PostProcessPipeline() {
+
 
 }
 
-VulkanGraphicsPipeline::VulkanGraphicsPipeline(const std::vector<std::string>& shaderpaths,
+PostProcessPipeline::PostProcessPipeline(const std::vector<std::string>& shaderpaths,
 	const VulkanRenderPass& renderPass, const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts) 
 	: shaderpaths(shaderpaths)
 {
-	createGraphicsPipeline(renderPass, contextInfo, setLayouts);
+
+	//TODO: determine renderPass type here based on pipeline type? or will it all be one renderpass in the end?
+	createPipeline(renderPass, contextInfo, setLayouts);
+
+	//NEW
+	addCommandPools(contextInfo, 1);
+
 	allocateCommandBuffers(contextInfo);
 	createSemaphores(contextInfo);
+
+	//NEW
+	createOutputImages(contextInfo);
+	createFramebuffers(contextInfo, renderPass);
 }
 
 
-VulkanGraphicsPipeline::~VulkanGraphicsPipeline() {
+PostProcessPipeline::~PostProcessPipeline() {
 }
 
-void VulkanGraphicsPipeline::allocateCommandBuffers(const VulkanContextInfo& contextInfo) {
+void PostProcessPipeline::createOutputImages(const VulkanContextInfo& contextInfo) {
+	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		outputImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.swapChainExtent, contextInfo.swapChainImageFormat, contextInfo);
+	}
+}
+
+void PostProcessPipeline::addCommandPools(const VulkanContextInfo& contextInfo, const uint32_t num) {
+	VkCommandPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = contextInfo.graphicsFamily;
+	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+
+	for (int i = 0; i < num; ++i) {
+		VkCommandPool commandPool;
+		commandPools.push_back(commandPool);
+
+		if (vkCreateCommandPool(contextInfo.device, &poolInfo, nullptr, &commandPools.back()) != VK_SUCCESS) {
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create graphics command pool!";
+			throw std::runtime_error(ss.str());
+		}
+	}
+}
+
+void PostProcessPipeline::createFramebuffers(const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass) {
+	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		VkFramebufferCreateInfo framebufferCreateInfo = {};
+		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferCreateInfo.pNext = NULL;
+		framebufferCreateInfo.renderPass = renderPass.renderPassPostProcess;
+		framebufferCreateInfo.pAttachments = &outputImages[i].imageView;
+		framebufferCreateInfo.attachmentCount = 1;
+
+		framebufferCreateInfo.width = contextInfo.swapChainExtent.width;
+		framebufferCreateInfo.height = contextInfo.swapChainExtent.height;
+		framebufferCreateInfo.layers = 1;
+
+		if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &framebuffers[i]) != VK_SUCCESS) {
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create framebuffer!";
+			throw std::runtime_error(ss.str());
+		}
+	}
+}
+
+void PostProcessPipeline::allocateCommandBuffers(const VulkanContextInfo& contextInfo) {
 	commandBuffers.resize(contextInfo.swapChainFramebuffers.size());
 	//clean up before record? no need, state is not maintained
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = contextInfo.graphicsCommandPools[0];
+	allocInfo.commandPool = commandPools[0];
 	//allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 	allocInfo.commandBufferCount = commandBuffers.size();
@@ -43,7 +97,7 @@ void VulkanGraphicsPipeline::allocateCommandBuffers(const VulkanContextInfo& con
 	}
 }
 
-void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& renderPass,
+void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
 	const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts)
 {
 	auto vertShaderCode = readFile(shaderpaths[0]);
@@ -148,8 +202,8 @@ void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& rend
 	std::vector<VkPushConstantRange> pushContantRanges;
 	VkPushConstantRange push1 = {};
 	push1.offset = 0;
-	push1.size = sizeof(ForwardPushConstant);
-	push1.stageFlags = ForwardPushConstant::stages;
+	push1.size = sizeof(PostProcessPushConstant);
+	push1.stageFlags = PostProcessPushConstant::stages;
 	pushContantRanges.push_back(push1);
 
 	///////////////////////
@@ -191,7 +245,7 @@ void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& rend
 	pipelineInfo.pDepthStencilState = &depthStencil;
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.layout = pipelineLayout;
-	pipelineInfo.renderPass = renderPass.renderPass;
+	pipelineInfo.renderPass = renderPass.renderPassPostProcessPresent;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.pDynamicState = &dynamicInfo;
@@ -205,7 +259,7 @@ void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& rend
 	vkDestroyShaderModule(contextInfo.device, vertShaderModule, nullptr);
 }
 
-VkShaderModule VulkanGraphicsPipeline::createShaderModule( const std::vector<char>& code, 
+VkShaderModule PostProcessPipeline::createShaderModule( const std::vector<char>& code, 
 	const VulkanContextInfo& contextInfo) const 
 {
 	VkShaderModuleCreateInfo createInfo = {};
@@ -222,9 +276,9 @@ VkShaderModule VulkanGraphicsPipeline::createShaderModule( const std::vector<cha
 	return shaderModule;
 }
 
-void VulkanGraphicsPipeline::recordCommandBufferSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
-	const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const Model& model, 
-	const Mesh& mesh, const bool vrmode)
+void PostProcessPipeline::recordCommandBufferSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
+	const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
+	const Model& model, const Mesh& mesh, const bool vrmode)
 {
 
 	if (!recording) {
@@ -240,8 +294,8 @@ void VulkanGraphicsPipeline::recordCommandBufferSecondary(const VkCommandBufferI
 	vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
 
 	const int camIndex = 0;
-	const ForwardPushConstant pushconstant = { model.modelMatrix, camIndex << 1 | model.isDynamic };
-	vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, ForwardPushConstant::stages, 0, sizeof(ForwardPushConstant), (const void*)&pushconstant);
+	const PostProcessPushConstant pushconstant = { model.modelMatrix, camIndex << 1 | model.isDynamic };
+	vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 
 	VkViewport viewport = {}; VkRect2D scissor = {};
 	getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
@@ -252,8 +306,8 @@ void VulkanGraphicsPipeline::recordCommandBufferSecondary(const VkCommandBufferI
 
 	if (vrmode) {
 		const uint32_t camIndex = 1;
-		const ForwardPushConstant pushconstant = { model.modelMatrix, uint32_t( camIndex << 1 | model.isDynamic ) };
-		vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, ForwardPushConstant::stages, 0, sizeof(ForwardPushConstant), (const void*)&pushconstant);
+		const PostProcessPushConstant pushconstant = { model.modelMatrix, uint32_t( camIndex << 1 | model.isDynamic ) };
+		vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 
 		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
 		vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
@@ -263,7 +317,7 @@ void VulkanGraphicsPipeline::recordCommandBufferSecondary(const VkCommandBufferI
 	}
 }
 
-void VulkanGraphicsPipeline::beginRecordingSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
+void PostProcessPipeline::beginRecordingSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
 	uint32_t imageIndex, const VulkanContextInfo& contextInfo) 
 {
 	recording = true;
@@ -280,7 +334,7 @@ void VulkanGraphicsPipeline::beginRecordingSecondary(const VkCommandBufferInheri
 }
 
 
-bool VulkanGraphicsPipeline::endRecordingSecondary(const uint32_t imageIndex) {
+bool PostProcessPipeline::endRecordingSecondary(const uint32_t imageIndex) {
 	if (recording) {
 		recording = false;
 
@@ -293,7 +347,7 @@ bool VulkanGraphicsPipeline::endRecordingSecondary(const uint32_t imageIndex) {
 	return false;
 }
 
-void VulkanGraphicsPipeline::recordCommandBufferPrimary(const VkCommandBuffer& primaryCmdBuffer, 
+void PostProcessPipeline::recordCommandBufferPrimary(const VkCommandBuffer& primaryCmdBuffer, 
 	const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
 	 const Model& model, const Mesh& mesh, const bool vrmode)
 {
@@ -307,8 +361,8 @@ void VulkanGraphicsPipeline::recordCommandBufferPrimary(const VkCommandBuffer& p
 	vkCmdBindDescriptorSets(primaryCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
 
 	const uint32_t camIndex = 0;
-	const ForwardPushConstant pushconstant = { model.modelMatrix, uint32_t( camIndex << 1 | model.isDynamic )};
-	vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, ForwardPushConstant::stages, 0, sizeof(ForwardPushConstant), (const void*)&pushconstant);
+	const PostProcessPushConstant pushconstant = { model.modelMatrix, uint32_t( camIndex << 1 | model.isDynamic )};
+	vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 
 	VkViewport viewport = {}; VkRect2D scissor = {};
 	getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
@@ -319,8 +373,8 @@ void VulkanGraphicsPipeline::recordCommandBufferPrimary(const VkCommandBuffer& p
 
 	if (vrmode) {
 		const uint32_t camIndex = 1;
-		const ForwardPushConstant pushconstant = { model.modelMatrix, uint32_t( camIndex << 1 | model.isDynamic ) };
-		vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, ForwardPushConstant::stages, 0, sizeof(ForwardPushConstant), (const void*)&pushconstant);
+		const PostProcessPushConstant pushconstant = { model.modelMatrix, uint32_t( camIndex << 1 | model.isDynamic ) };
+		vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 
 		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
 		vkCmdSetViewport(primaryCmdBuffer, 0, 1, &viewport);
@@ -330,7 +384,7 @@ void VulkanGraphicsPipeline::recordCommandBufferPrimary(const VkCommandBuffer& p
 	}
 }
 
-void VulkanGraphicsPipeline::getViewportAndScissor(VkViewport& outViewport, VkRect2D& outScissor, 
+void PostProcessPipeline::getViewportAndScissor(VkViewport& outViewport, VkRect2D& outScissor, 
 	const VulkanContextInfo& contextInfo, const uint32_t camIndex, const bool vrmode) {
 	outViewport.minDepth = 0.0f;
 	outViewport.maxDepth = 1.0f;
@@ -360,9 +414,85 @@ void VulkanGraphicsPipeline::getViewportAndScissor(VkViewport& outViewport, VkRe
 	}
 }
 
+void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& contextInfo, 
+	const VulkanRenderPass& renderPass, const Mesh& mesh, const VulkanDescriptor& descriptor) {
+	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.commandPool = commandPools[0];
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		//allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+		allocInfo.commandBufferCount = 1;
+
+		if (vkAllocateCommandBuffers(contextInfo.device, &allocInfo, &commandBuffers[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to allocate command buffers!");
+		}
+
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+		//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		beginInfo.pInheritanceInfo = nullptr; // Optional
 
 
-void VulkanGraphicsPipeline::createSemaphores(const VulkanContextInfo& contextInfo) {
+		vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
+
+		std::array<VkClearValue, 1> clearValues = {};
+		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 0.0f };
+		//clearValues[1].depthStencil = { 1.0f, 0 };
+
+		VkRenderPassBeginInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = renderPass.renderPassPostProcessPresent;
+		renderPassInfo.framebuffer = framebuffers[i];
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
+
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassInfo.pClearValues = clearValues.data();
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+		VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
+		VkBuffer indexBuffer = mesh.indexBuffer;
+		VkDeviceSize offsets[] = { 0 };
+
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &inputDescriptors[i].descriptorSet, 0, nullptr);
+
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+
+		vkCmdEndRenderPass(commandBuffers[i]);
+
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to record command buffer!";
+			throw std::runtime_error(ss.str());
+		}
+	}
+}
+
+void PostProcessPipeline::createInputDescriptors(const VulkanContextInfo& contextInfo, 
+	const std::vector<VulkanImage> vulkanImages)
+{
+	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		inputDescriptors[i].createDescriptorSetLayoutPostProcess(contextInfo);
+		inputDescriptors[i].createDescriptorPoolPostProcess(contextInfo);
+
+		//may want to extent this to include cases where a post process has multiple render targets and therefor VulkanImages
+		std::vector<VulkanImage> vulkanImagesAtSwapIndex = { vulkanImages[i] };
+		inputDescriptors[i].createDescriptorSetPostProcess(contextInfo, vulkanImagesAtSwapIndex);
+	}
+}
+
+
+
+void PostProcessPipeline::createSemaphores(const VulkanContextInfo& contextInfo) {
 	VkSemaphoreCreateInfo semaphoreInfo = {};
 	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -374,25 +504,25 @@ void VulkanGraphicsPipeline::createSemaphores(const VulkanContextInfo& contextIn
 	}
 }
 
-void VulkanGraphicsPipeline::destroyVulkanPipeline(const VulkanContextInfo& contextInfo) {
+void PostProcessPipeline::destroyVulkanPipeline(const VulkanContextInfo& contextInfo) {
 	freeCommandBuffers(contextInfo);
 	destroyPipeline(contextInfo);
 	destroyPipelineLayout(contextInfo);
 }
 
-void VulkanGraphicsPipeline::freeCommandBuffers(const VulkanContextInfo& contextInfo) {
-	vkFreeCommandBuffers(contextInfo.device, contextInfo.graphicsCommandPools[0], static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+void PostProcessPipeline::freeCommandBuffers(const VulkanContextInfo& contextInfo) {
+	vkFreeCommandBuffers(contextInfo.device, commandPools[0], static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 }
 
-void VulkanGraphicsPipeline::destroyPipeline(const VulkanContextInfo& contextInfo) {
+void PostProcessPipeline::destroyPipeline(const VulkanContextInfo& contextInfo) {
 	vkDestroyPipeline(contextInfo.device, graphicsPipeline, nullptr);
 }
 
-void VulkanGraphicsPipeline::destroyPipelineLayout(const VulkanContextInfo& contextInfo) {
+void PostProcessPipeline::destroyPipelineLayout(const VulkanContextInfo& contextInfo) {
 	vkDestroyPipelineLayout(contextInfo.device, pipelineLayout, nullptr);
 }
 
-void VulkanGraphicsPipeline::destroyPipelineSemaphores(const VulkanContextInfo& contextInfo) {
+void PostProcessPipeline::destroyPipelineSemaphores(const VulkanContextInfo& contextInfo) {
 	vkDestroySemaphore(contextInfo.device, renderFinishedSemaphore, nullptr);
 	vkDestroySemaphore(contextInfo.device, imageAvailableSemaphore, nullptr);
 }
