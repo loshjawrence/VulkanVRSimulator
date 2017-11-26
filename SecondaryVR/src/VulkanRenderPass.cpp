@@ -8,16 +8,20 @@
 VulkanRenderPass::VulkanRenderPass() {}
 
 VulkanRenderPass::VulkanRenderPass(const VulkanContextInfo& contextInfo) {
-	createRenderPass(contextInfo);
-	createRenderPassPostProcess(contextInfo);
-	createRenderPassPostProcessPresent(contextInfo);
+	createRenderPasses(contextInfo);
 }
 
 
 VulkanRenderPass::~VulkanRenderPass() {
 }
 
-void VulkanRenderPass::createRenderPass(const VulkanContextInfo& contextInfo) {
+void VulkanRenderPass::createRenderPasses(const VulkanContextInfo& contextInfo) {
+	createRenderPassForward(contextInfo);
+	createRenderPassPostProcess(contextInfo);
+	createRenderPassPostProcessPresent(contextInfo);
+}
+
+void VulkanRenderPass::createRenderPassForward(const VulkanContextInfo& contextInfo) {
 	VkAttachmentDescription colorAttachment = {};
 	colorAttachment.format = contextInfo.swapChainImageFormat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -191,7 +195,7 @@ void VulkanRenderPass::createRenderPassPostProcessPresent(const VulkanContextInf
 	}
 }
 
-void VulkanRenderPass::destroyRenderPass(const VulkanContextInfo& contextInfo) {
+void VulkanRenderPass::destroyRenderPasses(const VulkanContextInfo& contextInfo) {
 	if (renderPass != VK_NULL_HANDLE)
 		vkDestroyRenderPass(contextInfo.device, renderPass, nullptr);
 	if (renderPassPostProcess != VK_NULL_HANDLE)

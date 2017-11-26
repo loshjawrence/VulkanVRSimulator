@@ -75,8 +75,7 @@ private:
 	//Vulkan components
 	VulkanContextInfo contextInfo;
 	std::vector<VulkanGraphicsPipeline> forwardPipelines;
-	VulkanRenderPass forwardRenderPass;
-	VulkanDescriptor forwardDescriptor;
+	VulkanRenderPass allRenderPasses;
 	std::vector<PostProcessPipeline> postProcessPipelines;
 
 	//used for fps tracker

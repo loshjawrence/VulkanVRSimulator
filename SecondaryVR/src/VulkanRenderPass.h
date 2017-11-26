@@ -27,11 +27,12 @@ public:
 	VulkanRenderPass();
 	VulkanRenderPass(const VulkanContextInfo& contextInfo);
 	~VulkanRenderPass();
-	void createRenderPass(const VulkanContextInfo& contextInfo);
+	void createRenderPasses(const VulkanContextInfo& contextInfo);
+	void createRenderPassForward(const VulkanContextInfo& contextInfo);
 	void createRenderPassPostProcess(const VulkanContextInfo& contextInfo);
 	void createRenderPassPostProcessPresent(const VulkanContextInfo& contextInfo);
 
 	//cleanup
-	void destroyRenderPass(const VulkanContextInfo& contextInfo);
+	void destroyRenderPasses(const VulkanContextInfo& contextInfo);
 };
 

@@ -54,9 +54,6 @@
     <ClCompile Include="src\PostProcessPipeline.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\PPRenderPass.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\GlobalSettings.h">
@@ -102,9 +99,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="dependencies\pcg32.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\PPRenderPass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

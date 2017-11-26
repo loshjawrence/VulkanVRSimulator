@@ -55,7 +55,7 @@ void VulkanImage::operator=(const VulkanImage& rightside) {
 void VulkanImage::createColorAttachmentImage(const VulkanContextInfo& contextInfo) {
 	createImage(contextInfo);
 	createImageView(contextInfo);
-	transitionImageLayout(contextInfo, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	//transitionImageLayout(contextInfo, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
 void VulkanImage::createDepthImage(const VulkanContextInfo& contextInfo) {
