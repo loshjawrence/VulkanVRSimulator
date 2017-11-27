@@ -45,18 +45,18 @@ void VulkanApplication::loadModels() {
 		const float x = static_cast<float>(rng.nextUInt(5));
 		const float y = static_cast<float>(rng.nextUInt(5));
 		const float z = static_cast<float>(rng.nextUInt(5));
-		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
-		defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
+		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
 		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(5.0f)),glm::vec3(y, z, x)) };
-		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+1] = { std::string("res/objects/breakfast_room/breakfast_room.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f)),glm::vec3(x, y, z)) };
-		//defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+		defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
+		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
 		//defaultScene[i+1] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.05f)),glm::vec3(x, y, z)) };
@@ -569,6 +569,10 @@ void VulkanApplication::recreateSwapChain() {
 	contextInfo.createDepthImage();
 
 	contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPass);
+
+	//re-init framebuffers and image views
+	initForwardPipelinesVulkanImagesAndFramebuffers();
+
 
 	//update camera
 	camera.updateDimensions(contextInfo.swapChainExtent);
