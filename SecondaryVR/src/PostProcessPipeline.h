@@ -64,7 +64,7 @@ public:
 	void createFramebuffers(const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass);
 	void createInputDescriptors(const VulkanContextInfo& contextInfo, const std::vector<VulkanImage> vulkanImages);
 	void createStaticCommandBuffers(const VulkanContextInfo& contextInfo,
-		const VulkanRenderPass& renderPass, const Mesh& mesh, const VulkanDescriptor& descriptor);//static since no dynamic input, mesh is just quad or triangle
+		const VulkanRenderPass& renderPass, const Mesh& mesh);//static since no dynamic input, mesh is just quad or triangle
 
 
 	void allocateCommandBuffers(const VulkanContextInfo& contextInfo);

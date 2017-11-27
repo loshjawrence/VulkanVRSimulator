@@ -75,8 +75,11 @@ private:
 	//Vulkan components
 	VulkanContextInfo contextInfo;
 	std::vector<VulkanGraphicsPipeline> forwardPipelines;
+	std::vector<VkFramebuffer> forwardPipelinesFramebuffers;
+	std::vector<VulkanImage> forwardPipelinesVulkanImages;
 	VulkanRenderPass allRenderPasses;
 	std::vector<PostProcessPipeline> postProcessPipelines;
+	Mesh ndcTriangle;
 
 	//used for fps tracker
 	double oldtime = 0.f;
@@ -105,7 +108,7 @@ private:
 
 	void loadModels();
 	void updateUniformBuffer();
-	//void updateUniformBuffer(const Model& model);
+	void initForwardPipelinesVulkanImagesAndFramebuffers();
 
 	//drawing
 	void drawFrame();

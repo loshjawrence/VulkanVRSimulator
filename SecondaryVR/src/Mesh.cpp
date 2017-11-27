@@ -9,7 +9,9 @@
 #include "VulkanBuffer.h"
 
 
-Mesh::Mesh() {
+Mesh::Mesh(const VulkanContextInfo& contextInfo, const MESHTYPE meshtype) {
+	if (meshtype == MESHTYPE::NDCTRIANGLE) createNDCTriangle(contextInfo);
+	//other default meshes
 }
 
 Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices, 
@@ -17,6 +19,9 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>&
 	: mVertices(vertices), mIndices(indices), mTextures(textures)
 {
 	setupVulkanBuffers(contextInfo);
+}
+
+Mesh::Mesh() {
 }
 
 Mesh::~Mesh() {
@@ -60,4 +65,39 @@ void Mesh::setupVulkanBuffers(const VulkanContextInfo& contextInfo) {
 	//setup vulkan buffers for the geometry
 	VulkanBuffer::createVertexBuffer(contextInfo, mVertices, vertexBuffer, vertexBufferMemory);
 	VulkanBuffer::createIndexBuffer(contextInfo, mIndices, indexBuffer, indexBufferMemory);
+}
+
+void Mesh::createNDCTriangle(const VulkanContextInfo& contextInfo) {
+
+	//top left above screen
+	Vertex tempVertexInfo;
+	tempVertexInfo.pos = glm::vec3(-1.0f, 3.0f, 0.5f);
+	tempVertexInfo.color = glm::vec3(1.0f);
+	tempVertexInfo.nor = glm::vec3(1.0f);
+	tempVertexInfo.uv = glm::vec2(0.0f, 2.0f);
+
+	mVertices.push_back(tempVertexInfo);
+	mIndices.push_back(0);
+
+	//bottom left screen
+	tempVertexInfo.pos = glm::vec3(-1.0f, -1.0f, 0.5f);
+	tempVertexInfo.color = glm::vec3(1.0f);
+	tempVertexInfo.nor = glm::vec3(1.0f);
+	tempVertexInfo.uv = glm::vec2(0.0f, 0.0f);
+
+	mVertices.push_back(tempVertexInfo);
+	mIndices.push_back(1);
+
+	//bottom right off screen
+	tempVertexInfo.pos = glm::vec3(3.0f, -1.0f, 0.5f);
+	tempVertexInfo.color = glm::vec3(1.0f);
+	tempVertexInfo.nor = glm::vec3(1.0f);
+
+	tempVertexInfo.uv = glm::vec2(2.0f, 0.0f);
+
+	mVertices.push_back(tempVertexInfo);
+	mIndices.push_back(2);
+
+	VulkanBuffer::createVertexBuffer(contextInfo, mVertices, vertexBuffer, vertexBufferMemory);
+	VulkanBuffer::createIndexBuffer(contextInfo, mIndices, vertexBuffer, vertexBufferMemory);
 }

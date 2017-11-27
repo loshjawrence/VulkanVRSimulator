@@ -42,6 +42,9 @@ public:
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
 
+	std::vector<VulkanImage> outputImages;
+	std::vector<VkFramebuffer> framebuffers;
+
 	//recording state
 	bool recording = false;
 
@@ -52,27 +55,31 @@ public:
 
 	~VulkanGraphicsPipeline();
 
-	void allocateCommandBuffers(const VulkanContextInfo& contextInfo);
 
 	void createGraphicsPipeline(const VulkanRenderPass& renderPass, const VulkanContextInfo& contextInfo, 
 		const VkDescriptorSetLayout* setLayouts);
-
-	VkShaderModule createShaderModule(const std::vector<char>& code, const VulkanContextInfo& contextInfo) const;
 
 	////SECONDARY RECORDING////
 	void recordCommandBufferSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
 		const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
 		const Model& model, const Mesh& mesh, const bool vrmode);
 	void beginRecordingSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
-		const uint32_t imageIndex, const VulkanContextInfo& contextInfo);
+		const uint32_t imageIndex);
 	bool endRecordingSecondary(const uint32_t imageIndex);
 
+
+	////PRIMARY RECORDING////
+	void recordCommandBufferPrimary(const VkCommandBuffer& singleCmdBuffer,
+		const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const Model& model, const Mesh& mesh, const bool vrmode);
+
+	//for dynamic viewport and scissor state switching
 	void getViewportAndScissor(VkViewport& outViewport, VkRect2D& outScissor, 
 		const VulkanContextInfo& contextInfo, const uint32_t camIndex, const bool vrmode);
 
-	void recordCommandBufferPrimary(const VkCommandBuffer& singleCmdBuffer,
-		const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const Model& model, const Mesh& mesh, const bool vrmode);
+	void allocateCommandBuffers(const VulkanContextInfo& contextInfo);
+	VkShaderModule createShaderModule(const std::vector<char>& code, const VulkanContextInfo& contextInfo) const;
 	void createSemaphores(const VulkanContextInfo& contextInfo);
+
 
 	//cleanup
 	void freeCommandBuffers(const VulkanContextInfo& contextInfo);

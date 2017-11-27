@@ -74,6 +74,9 @@ void initDescriptorSetLayoutTypes(const VulkanContextInfo& contextInfo) {
 	//// Post Process Layouts ////
 	//////////////////////////////
 	{
+		//reserve 0 for input attachment? (allows for output of one subpass to be used in another subpass but can only read from the same frag in the frag shader
+		//good use case would be deferred: gather info into gbuffers in sub0 then use those for lighting calc in sub1
+		//since you only need frag-to-frag reading
 		std::vector<VkDescriptorSetLayoutBinding> bindings = {};
 		//BasicColorRenderTarget
 		VkDescriptorSetLayoutBinding postProcessInputBinding = {};

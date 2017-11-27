@@ -27,6 +27,7 @@ VulkanGraphicsPipeline::VulkanGraphicsPipeline(const std::vector<std::string>& s
 VulkanGraphicsPipeline::~VulkanGraphicsPipeline() {
 }
 
+
 void VulkanGraphicsPipeline::allocateCommandBuffers(const VulkanContextInfo& contextInfo) {
 	commandBuffers.resize(contextInfo.swapChainFramebuffers.size());
 	//clean up before record? no need, state is not maintained
@@ -228,7 +229,7 @@ void VulkanGraphicsPipeline::recordCommandBufferSecondary(const VkCommandBufferI
 {
 
 	if (!recording) {
-		beginRecordingSecondary(inheritanceInfo, imageIndex, contextInfo);
+		beginRecordingSecondary(inheritanceInfo, imageIndex);
 	} 
 
 	const VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
@@ -264,7 +265,7 @@ void VulkanGraphicsPipeline::recordCommandBufferSecondary(const VkCommandBufferI
 }
 
 void VulkanGraphicsPipeline::beginRecordingSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
-	uint32_t imageIndex, const VulkanContextInfo& contextInfo) 
+	uint32_t imageIndex) 
 {
 	recording = true;
 	VkCommandBufferBeginInfo beginInfo = {};

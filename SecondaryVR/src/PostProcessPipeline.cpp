@@ -421,7 +421,7 @@ void PostProcessPipeline::getViewportAndScissor(VkViewport& outViewport, VkRect2
 }
 
 void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& contextInfo, 
-	const VulkanRenderPass& renderPass, const Mesh& mesh, const VulkanDescriptor& descriptor) {
+	const VulkanRenderPass& renderPass, const Mesh& mesh) {
 	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
