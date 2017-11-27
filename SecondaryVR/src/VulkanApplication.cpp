@@ -106,13 +106,13 @@ void VulkanApplication::drawFrame() {
 		throw std::runtime_error(ss.str());
 	}
 
-	std::vector<VkSemaphore> waitSemaphores = { imageAvailableSemaphore };
-	std::vector<VkPipelineStageFlags> waitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	std::vector<VkSemaphore> forwardWaitSemaphores = { imageAvailableSemaphore };
+	std::vector<VkPipelineStageFlags> forwardWaitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
 	updateUniformBuffer();
-	////////////////
-	//// RECORD ////
-	////////////////
+	//////////////////
+	//// FORWARD /////
+	//////////////////
 	//PRIMARY FILLED WITH HOMOGENOUS SECONDARY
 	//VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	//beginRecordingPrimary(inheritanceInfo, imageIndex);
@@ -141,7 +141,7 @@ void VulkanApplication::drawFrame() {
 
 
 
-	//Primary bufer recorded directly with unsorted pipelines
+	////Primary bufer recorded directly with unsorted pipelines
 	beginRecordingPrimary(imageIndex);
 	for (Model& model : models) {
 		//TODO: record only visible meshes
@@ -155,30 +155,67 @@ void VulkanApplication::drawFrame() {
 	endRecordingPrimary(imageIndex);
 
 
-	VkSubmitInfo submitInfo = {};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	VkSubmitInfo forwardSubmitInfo = {};
+	forwardSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	submitInfo.waitSemaphoreCount = waitSemaphores.size();
-	submitInfo.pWaitSemaphores = &waitSemaphores[0];
-	submitInfo.pWaitDstStageMask = &waitStages[0];
+	forwardSubmitInfo.waitSemaphoreCount = forwardWaitSemaphores.size();
+	forwardSubmitInfo.pWaitSemaphores = &forwardWaitSemaphores[0];
+	forwardSubmitInfo.pWaitDstStageMask = &forwardWaitStages[0];
 
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &primaryForwardCommandBuffers[imageIndex];
+	forwardSubmitInfo.commandBufferCount = 1;
+	forwardSubmitInfo.pCommandBuffers = &primaryForwardCommandBuffers[imageIndex];
 
-	std::vector<VkSemaphore> signalSemaphores = { forwardRenderFinishedSemaphore };
-	submitInfo.signalSemaphoreCount = signalSemaphores.size();
-	submitInfo.pSignalSemaphores = &signalSemaphores[0];
+	std::vector<VkSemaphore> forwardSignalSemaphores = { forwardRenderFinishedSemaphore };
+	forwardSubmitInfo.signalSemaphoreCount = forwardSignalSemaphores.size();
+	forwardSubmitInfo.pSignalSemaphores = &forwardSignalSemaphores[0];
 
-	if (vkQueueSubmit(contextInfo.graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+	if (vkQueueSubmit(contextInfo.graphicsQueue, 1, &forwardSubmitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
 		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to submit draw command buffer!";
 		throw std::runtime_error(ss.str());
 	}
 
+	///////////////////////////////
+	//////// POST PROCESS /////////
+	///////////////////////////////
+	//VkSubmitInfo postProcessSubmitInfo = {};
+	//postProcessSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	//std::vector<VkSemaphore> postProcessWaitSemaphores = { forwardRenderFinishedSemaphore };
+	//std::vector<VkPipelineStageFlags> postProcessWaitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+
+	//for (auto& pipeline : postProcessPipelines) {
+	//	postProcessSubmitInfo.waitSemaphoreCount = postProcessWaitSemaphores.size();
+	//	postProcessSubmitInfo.pWaitSemaphores = &postProcessWaitSemaphores[0];
+	//	postProcessSubmitInfo.pWaitDstStageMask = &postProcessWaitStages[0];
+	//	postProcessSubmitInfo.commandBufferCount = 1;
+
+	//	postProcessSubmitInfo.pCommandBuffers = &pipeline.commandBuffers[imageIndex];
+
+	//	std::vector<VkSemaphore> postProcessSignalSemaphores = { pipeline.renderFinishedSemaphore };
+	//	postProcessSubmitInfo.signalSemaphoreCount = postProcessSignalSemaphores.size();
+	//	postProcessSubmitInfo.pSignalSemaphores = &postProcessSignalSemaphores[0];
+
+	//	if (vkQueueSubmit(contextInfo.graphicsQueue, 1, &postProcessSubmitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+	//		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to submit draw command buffer!";
+	//		throw std::runtime_error(ss.str());
+	//	}
+	//}
+	
+
+
+
+
+	///////////////////////
+	/////// PRESENT////////
+	///////////////////////
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-	presentInfo.waitSemaphoreCount = signalSemaphores.size();
-	presentInfo.pWaitSemaphores = &signalSemaphores[0];
+	//std::vector<VkSemaphore> presentSignalSemaphores = { postProcessPipelines.back().renderFinishedSemaphore };
+	//presentInfo.waitSemaphoreCount = presentSignalSemaphores.size();
+	//presentInfo.pWaitSemaphores = &presentSignalSemaphores[0];
+	presentInfo.waitSemaphoreCount = forwardSignalSemaphores.size();
+	presentInfo.pWaitSemaphores = &forwardSignalSemaphores[0];
 
 	VkSwapchainKHR swapChains[] = { contextInfo.swapChain };
 	presentInfo.swapchainCount = 1;
