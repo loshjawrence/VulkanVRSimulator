@@ -42,9 +42,9 @@ void VulkanApplication::loadModels() {
 	const int numMeshesPerStride = 2;
 	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
 	for (int i = 0; i < num/numMeshesPerStride; i += numMeshesPerStride) {
-		const float x = static_cast<float>(rng.nextUInt(5));
-		const float y = static_cast<float>(rng.nextUInt(5));
-		const float z = static_cast<float>(rng.nextUInt(5));
+		const float x = static_cast<float>(rng.nextUInt(1));
+		const float y = static_cast<float>(rng.nextUInt(1));
+		const float z = static_cast<float>(rng.nextUInt(1));
 		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
@@ -58,8 +58,9 @@ void VulkanApplication::loadModels() {
 		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
 			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
-		//defaultScene[i+1] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.05f)),glm::vec3(x, y, z)) };
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 	}
 
 	for (auto& modelinfo : defaultScene) {//defaultScene in GlobalSettings.h
@@ -83,7 +84,8 @@ void VulkanApplication::initVulkan() {
 	//really just for initializing static VulkanDescriptor::"pipeline"LayoutTypes vectors
 	VulkanDescriptor justInit = VulkanDescriptor(contextInfo);
 
-	contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPass);
+	//contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPass);
+	contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPassPostProcessPresent);
 
 	//setup all pipelines
 	createPipelines();
@@ -92,7 +94,7 @@ void VulkanApplication::initVulkan() {
 	loadModels();
 
 	createSemaphores();
-	allocateCommandBuffers();
+	allocateGlobalCommandBuffers();
 }
 
 
@@ -179,29 +181,28 @@ void VulkanApplication::drawFrame() {
 	///////////////////////////////
 	//////// POST PROCESS /////////
 	///////////////////////////////
-	//VkSubmitInfo postProcessSubmitInfo = {};
-	//postProcessSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	VkSubmitInfo postProcessSubmitInfo = {};
+	postProcessSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-	//std::vector<VkSemaphore> postProcessWaitSemaphores = { forwardRenderFinishedSemaphore };
-	//std::vector<VkPipelineStageFlags> postProcessWaitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	std::vector<VkSemaphore> postProcessWaitSemaphores = { forwardRenderFinishedSemaphore };
+	std::vector<VkPipelineStageFlags> postProcessWaitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	postProcessSubmitInfo.waitSemaphoreCount = postProcessWaitSemaphores.size();
+	postProcessSubmitInfo.pWaitDstStageMask = &postProcessWaitStages[0];
+	postProcessSubmitInfo.commandBufferCount = 1;
 
-	//for (auto& pipeline : postProcessPipelines) {
-	//	postProcessSubmitInfo.waitSemaphoreCount = postProcessWaitSemaphores.size();
-	//	postProcessSubmitInfo.pWaitSemaphores = &postProcessWaitSemaphores[0];
-	//	postProcessSubmitInfo.pWaitDstStageMask = &postProcessWaitStages[0];
-	//	postProcessSubmitInfo.commandBufferCount = 1;
+	for (auto& pipeline : postProcessPipelines) {
+		postProcessSubmitInfo.pWaitSemaphores = &postProcessWaitSemaphores[0];
+		postProcessSubmitInfo.pCommandBuffers = &pipeline.commandBuffers[imageIndex];
+		std::vector<VkSemaphore> postProcessSignalSemaphores = { pipeline.renderFinishedSemaphore };
+		postProcessSubmitInfo.signalSemaphoreCount = postProcessSignalSemaphores.size();
+		postProcessSubmitInfo.pSignalSemaphores = &postProcessSignalSemaphores[0];
 
-	//	postProcessSubmitInfo.pCommandBuffers = &pipeline.commandBuffers[imageIndex];
-
-	//	std::vector<VkSemaphore> postProcessSignalSemaphores = { pipeline.renderFinishedSemaphore };
-	//	postProcessSubmitInfo.signalSemaphoreCount = postProcessSignalSemaphores.size();
-	//	postProcessSubmitInfo.pSignalSemaphores = &postProcessSignalSemaphores[0];
-
-	//	if (vkQueueSubmit(contextInfo.graphicsQueue, 1, &postProcessSubmitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
-	//		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to submit draw command buffer!";
-	//		throw std::runtime_error(ss.str());
-	//	}
-	//}
+		if (vkQueueSubmit(contextInfo.graphicsQueue, 1, &postProcessSubmitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to submit draw command buffer!";
+			throw std::runtime_error(ss.str());
+		}
+		postProcessWaitSemaphores = { pipeline.renderFinishedSemaphore };
+	}
 	
 
 
@@ -213,11 +214,11 @@ void VulkanApplication::drawFrame() {
 	VkPresentInfoKHR presentInfo = {};
 	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
-	//std::vector<VkSemaphore> presentSignalSemaphores = { postProcessPipelines.back().renderFinishedSemaphore };
-	//presentInfo.waitSemaphoreCount = presentSignalSemaphores.size();
-	//presentInfo.pWaitSemaphores = &presentSignalSemaphores[0];
-	presentInfo.waitSemaphoreCount = forwardSignalSemaphores.size();
-	presentInfo.pWaitSemaphores = &forwardSignalSemaphores[0];
+	std::vector<VkSemaphore> presentSignalSemaphores = { postProcessPipelines.back().renderFinishedSemaphore };
+	presentInfo.waitSemaphoreCount = presentSignalSemaphores.size();
+	presentInfo.pWaitSemaphores = &presentSignalSemaphores[0];
+	//presentInfo.waitSemaphoreCount = forwardSignalSemaphores.size();
+	//presentInfo.pWaitSemaphores = &forwardSignalSemaphores[0];
 
 	VkSwapchainKHR swapChains[] = { contextInfo.swapChain };
 	presentInfo.swapchainCount = 1;
@@ -236,44 +237,6 @@ void VulkanApplication::drawFrame() {
 	}
 }
 
-void VulkanApplication::initForwardPipelinesVulkanImagesAndFramebuffers() {
-	forwardPipelinesVulkanImages.resize(contextInfo.swapChainImages.size());
-	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-
-		//TODO: if flag is present then use swapchain format otherwise 16F
-		//FOR LATER:
-		//outputImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.swapChainExtent, contextInfo.swapChainImageFormat, contextInfo);
-		forwardPipelinesVulkanImages[i].image = contextInfo.swapChainImages[i];
-		forwardPipelinesVulkanImages[i].imageView = contextInfo.swapChainImageViews[i];
-	}
-
-	forwardPipelinesFramebuffers.resize(contextInfo.swapChainImages.size());
-
-	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-		forwardPipelinesFramebuffers[i] = contextInfo.swapChainFramebuffers[i];
-	}
-
-	//FOR LATER:
-	//for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-	//	VkFramebufferCreateInfo framebufferCreateInfo = {};
-	//	framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	//	framebufferCreateInfo.pNext = NULL;
-	//	
-	//	//TODO: if last make present otherwise normal post process
-	//	framebufferCreateInfo.renderPass = renderPass.renderPassPostProcessPresent;
-	//	framebufferCreateInfo.pAttachments = &outputImages[i].imageView;
-	//	framebufferCreateInfo.attachmentCount = 1;
-
-	//	framebufferCreateInfo.width = contextInfo.swapChainExtent.width;
-	//	framebufferCreateInfo.height = contextInfo.swapChainExtent.height;
-	//	framebufferCreateInfo.layers = 1;
-
-	//	if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &framebuffers[i]) != VK_SUCCESS) {
-	//		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create framebuffer!";
-	//		throw std::runtime_error(ss.str());
-	//	}
-	//}
-}
 
 void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& inheritanceInfo, const uint32_t imageIndex) {
 
@@ -373,7 +336,7 @@ void VulkanApplication::updateUniformBuffer() {
 	vkUnmapMemory(contextInfo.device, uniformBufferMemory);
 }
 
-void VulkanApplication::allocateCommandBuffers() {
+void VulkanApplication::allocateGlobalCommandBuffers() {
 	primaryForwardCommandBuffers.resize(contextInfo.swapChainFramebuffers.size());
 	addGraphicsCommandPool(primaryForwardCommandBuffers.size());
 	//clean up before record? no need, state is not maintained
@@ -486,12 +449,6 @@ void VulkanApplication::cleanup() {
 	glfwTerminate();
 }
 
-void VulkanApplication::destroyPipelines() {
-	for (auto& pipeline : forwardPipelines) {
-		pipeline.destroyVulkanPipeline(contextInfo);
-	}
-}
-
 void VulkanApplication::destroyPipelinesSemaphores() {
 	for (auto& pipeline : forwardPipelines) {
 		pipeline.destroyPipelineSemaphores(contextInfo);
@@ -505,7 +462,6 @@ void VulkanApplication::createPipelines() {
 	//forwardPipelines
 	forwardPipelines.resize(allShaders_ForwardPipeline.size());
 	textureMapFlagsToForwardPipelineIndex.resize(allShaders_ForwardPipeline.size());
-	initForwardPipelinesVulkanImagesAndFramebuffers();
 	for (uint32_t i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
 		int numImageSamplers = 0;
 		for (int k = 1; k < VulkanDescriptor::MAX_IMAGESAMPLERS + 1; ++k) //the first bit is for HAS_NONE so we need to ignore that one
@@ -522,19 +478,65 @@ void VulkanApplication::createPipelines() {
 	for (uint32_t i = 0; i < allShaders_PostProcessPipeline.size(); ++i) {
 		const uint32_t numImageSamplers = allShaders_PostProcessPipeline[i].second;
 
+		//need an mapping from numimagesamplers to layouttypes index
 		//TODO: If last post process then outputImage format should be swapchain format, otherwise 16F
 		postProcessPipelines[i] = PostProcessPipeline(allShaders_PostProcessPipeline[i].first,
 			allRenderPasses, contextInfo, &(VulkanDescriptor::postProcessLayoutTypes[numImageSamplers-1]));
 	}
-	//loop for creating inputDescriptors for all post process pipelines(just render targets of prev stage)
-	//first one needs the forward render target, remaining need previous pp stage's render target
 
-	//for (auto& pipeline : postProcessPipelines) {
-	//	pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ndcTriangle);
-	//}
+	initForwardPipelinesVulkanImagesAndFramebuffers();
+	postProcessPipelines[0].createInputDescriptors(contextInfo, forwardPipelinesVulkanImages);
+	for (int i = 1; i < postProcessPipelines.size(); ++i) {
+		postProcessPipelines[i].createInputDescriptors(contextInfo, postProcessPipelines[i-1].outputImages);
+	}
+	//create the static command buffers(no dynamic input for post processing)
+	for (auto& pipeline : postProcessPipelines) {
+		pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ndcTriangle, camera.vrmode);
+	}
+
 
 }
 
+void VulkanApplication::initForwardPipelinesVulkanImagesAndFramebuffers() {
+	forwardPipelinesVulkanImages.resize(contextInfo.swapChainImages.size());
+	forwardPipelinesFramebuffers.resize(contextInfo.swapChainImages.size());
+	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		//forwardPipelinesVulkanImages[i].image = contextInfo.swapChainImages[i];
+		//forwardPipelinesVulkanImages[i].imageView = contextInfo.swapChainImageViews[i];
+		//forwardPipelinesVulkanImages[i].extent = contextInfo.swapChainExtent;
+		//forwardPipelinesVulkanImages[i].format = contextInfo.swapChainImageFormat;
+
+		//TODO: if flag is present then use swapchain format otherwise 16F
+		//FOR LATER://these will need to be rebuilt in recreateswapchain?
+		forwardPipelinesVulkanImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.swapChainExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
+
+	}
+
+	//for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+	//	forwardPipelinesFramebuffers[i] = contextInfo.swapChainFramebuffers[i];
+	//}
+
+	////FOR LATER://these will need to be rebuild in recreateswapchain?
+	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		VkFramebufferCreateInfo framebufferCreateInfo = {};
+		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferCreateInfo.pNext = NULL;
+
+		//TODO: if last make present otherwise normal post process
+		std::vector<VkImageView> attachments = { forwardPipelinesVulkanImages[i].imageView, contextInfo.depthImage.imageView };
+		framebufferCreateInfo.renderPass = allRenderPasses.renderPass;
+		framebufferCreateInfo.pAttachments = attachments.data();
+		framebufferCreateInfo.attachmentCount = attachments.size();
+		framebufferCreateInfo.width = contextInfo.swapChainExtent.width;
+		framebufferCreateInfo.height = contextInfo.swapChainExtent.height;
+		framebufferCreateInfo.layers = 1;
+
+		if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &forwardPipelinesFramebuffers[i]) != VK_SUCCESS) {
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create framebuffer!";
+			throw std::runtime_error(ss.str());
+		}
+	}
+}
 uint32_t VulkanApplication::getForwardPipelineIndexFromTextureMapFlags(const uint32_t textureMapFlags) {
 	for (uint32_t i = 0; i < textureMapFlagsToForwardPipelineIndex.size(); ++i) {
 		if ((textureMapFlags & textureMapFlagsToForwardPipelineIndex[i]) == textureMapFlags) {
@@ -542,14 +544,45 @@ uint32_t VulkanApplication::getForwardPipelineIndexFromTextureMapFlags(const uin
 		}
 	}
 }
+
 void VulkanApplication::cleanupSwapChain() {
 	contextInfo.depthImage.destroyVulkanImage(contextInfo);
 
 	destroyPipelines();
+	destroyOffScreenRenderTargets();
+	freeGlobalCommandBuffers();
 
-	allRenderPasses.destroyRenderPasses(contextInfo);
+	allRenderPasses.destroyRenderPasses(contextInfo);//don't think this is needed for resize but needed for final cleanup
 
 	contextInfo.destroyVulkanSwapChain();
+}
+
+void VulkanApplication::destroyOffScreenRenderTargets() {
+	for (auto& image : forwardPipelinesVulkanImages) {
+		image.destroyVulkanImage(contextInfo);
+	}
+
+	//dont need to do the last one since it refers to the swap chain
+	for (int i = 0; i < postProcessPipelines.size() - 1; ++i) {
+		for (auto& image : postProcessPipelines[i].outputImages) {
+			image.destroyVulkanImage(contextInfo);
+		}
+	}
+}
+
+void VulkanApplication::freeGlobalCommandBuffers() {
+	for(int i = 0; i < primaryForwardCommandBuffers.size(); ++i) {
+		vkFreeCommandBuffers(contextInfo.device, contextInfo.graphicsCommandPools[0], 1, &primaryForwardCommandBuffers[i]);
+	}
+}
+
+void VulkanApplication::destroyPipelines() {
+	for (auto& pipeline : forwardPipelines) {
+		pipeline.destroyVulkanPipeline(contextInfo);
+	}
+	for (auto& pipeline : postProcessPipelines) {
+		pipeline.destroyVulkanPipeline(contextInfo);
+	}
 }
 
 
@@ -560,18 +593,15 @@ void VulkanApplication::recreateSwapChain() {
 
 	contextInfo.createSwapChain(window);
 	contextInfo.createSwapChainImageViews();
-
+	contextInfo.createDepthImage();
 
 	allRenderPasses.createRenderPasses(contextInfo);
 
+
+	contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPassPostProcessPresent);
+	allocateGlobalCommandBuffers();
+
 	createPipelines();
-
-	contextInfo.createDepthImage();
-
-	contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPass);
-
-	//re-init framebuffers and image views
-	initForwardPipelinesVulkanImagesAndFramebuffers();
 
 
 	//update camera

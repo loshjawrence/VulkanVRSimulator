@@ -26,7 +26,6 @@ class Mesh;
 class Model;
 
 struct PostProcessPushConstant {
-	glm::mat4 modelMatrix;
 	uint32_t toggleFlags;
 	static const VkShaderStageFlags stages = VK_SHADER_STAGE_VERTEX_BIT;
 };
@@ -62,9 +61,9 @@ public:
 	void createOutputImages(const VulkanContextInfo& contextInfo);
 	void addCommandPools(const VulkanContextInfo& contextInfo, const uint32_t num);
 	void createFramebuffers(const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass);
-	void createInputDescriptors(const VulkanContextInfo& contextInfo, const std::vector<VulkanImage> vulkanImages);
+	void createInputDescriptors(const VulkanContextInfo& contextInfo, const std::vector<VulkanImage>& vulkanImages);
 	void createStaticCommandBuffers(const VulkanContextInfo& contextInfo,
-		const VulkanRenderPass& renderPass, const Mesh& mesh);//static since no dynamic input, mesh is just quad or triangle
+		const VulkanRenderPass& renderPass, const Mesh& mesh, const bool vrmode);//static since no dynamic input, mesh is just quad or triangle
 
 
 	void allocateCommandBuffers(const VulkanContextInfo& contextInfo);

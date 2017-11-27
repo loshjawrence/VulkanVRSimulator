@@ -12,6 +12,8 @@ layout (push_constant) uniform PerDrawCallInfo {
     mat4 model;
     int toggleFlags;
 } PushConstant;
+const int camBit = 1;
+const int dynamicBit = 0;
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inColor;
@@ -33,11 +35,9 @@ out gl_PerVertex {
 mat4 rotationMatrix(vec3 axis, const float angle);
 mat4 rotationMatrixBasic(const float angle);
 
-const int camBit = 1;
-const int dynamicBit = 0;
 void main() {
-    const int isDynamic = int( (PushConstant.toggleFlags & 1 << dynamicBit) >> dynamicBit);
-    const int camIndex = int( (PushConstant.toggleFlags & 1 << camBit) >> camBit);
+    const int isDynamic = (PushConstant.toggleFlags >> dynamicBit) & 1;
+    const int camIndex = (PushConstant.toggleFlags >> camBit) & 1;
 
     mat4 updatedModelMatrix = PushConstant.model * rotationMatrix(vec3(0.f, 1.f, 0.f), isDynamic * ubo.time * 3.1415f/4.f);
     gl_Position = ubo.proj * ubo.view[camIndex] * updatedModelMatrix * vec4(inPosition, 1.0);

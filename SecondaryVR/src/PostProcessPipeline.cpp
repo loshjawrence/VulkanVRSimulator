@@ -42,8 +42,11 @@ void PostProcessPipeline::createOutputImages(const VulkanContextInfo& contextInf
 	outputImages.resize(contextInfo.swapChainImages.size());
 	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
 		
-		//TODO: if flag is present then use swapchain format otherwise 16F
-		outputImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.swapChainExtent, contextInfo.swapChainImageFormat, contextInfo);
+		//TODO: if flag is present then use swapchain stuff otherwise 16F
+		//outputImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.swapChainExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
+		outputImages[i].image = contextInfo.swapChainImages[i];
+		outputImages[i].imageView = contextInfo.swapChainImageViews[i];
+		outputImages[i].extent = contextInfo.swapChainExtent;
 	}
 }
 
@@ -67,24 +70,27 @@ void PostProcessPipeline::addCommandPools(const VulkanContextInfo& contextInfo, 
 void PostProcessPipeline::createFramebuffers(const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass) {
 	framebuffers.resize(contextInfo.swapChainImages.size());
 	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-		VkFramebufferCreateInfo framebufferCreateInfo = {};
-		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferCreateInfo.pNext = NULL;
-		
-		//TODO: if last make present otherwise normal post process
-		framebufferCreateInfo.renderPass = renderPass.renderPassPostProcessPresent;
-		framebufferCreateInfo.pAttachments = &outputImages[i].imageView;
-		framebufferCreateInfo.attachmentCount = 1;
-
-		framebufferCreateInfo.width = contextInfo.swapChainExtent.width;
-		framebufferCreateInfo.height = contextInfo.swapChainExtent.height;
-		framebufferCreateInfo.layers = 1;
-
-		if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &framebuffers[i]) != VK_SUCCESS) {
-			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create framebuffer!";
-			throw std::runtime_error(ss.str());
-		}
+		framebuffers[i] = contextInfo.swapChainFramebuffers[i];
 	}
+	//for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+	//	VkFramebufferCreateInfo framebufferCreateInfo = {};
+	//	framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	//	framebufferCreateInfo.pNext = NULL;
+	//	
+	//	//TODO: if last make present otherwise normal post process
+	//	framebufferCreateInfo.renderPass = renderPass.renderPassPostProcessPresent;
+	//	framebufferCreateInfo.pAttachments = &outputImages[i].imageView;
+	//	framebufferCreateInfo.attachmentCount = 1;
+
+	//	framebufferCreateInfo.width = contextInfo.swapChainExtent.width;
+	//	framebufferCreateInfo.height = contextInfo.swapChainExtent.height;
+	//	framebufferCreateInfo.layers = 1;
+
+	//	if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &framebuffers[i]) != VK_SUCCESS) {
+	//		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create framebuffer!";
+	//		throw std::runtime_error(ss.str());
+	//	}
+	//}
 }
 
 void PostProcessPipeline::allocateCommandBuffers(const VulkanContextInfo& contextInfo) {
@@ -300,7 +306,7 @@ void PostProcessPipeline::recordCommandBufferSecondary(const VkCommandBufferInhe
 	vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
 
 	const int camIndex = 0;
-	const PostProcessPushConstant pushconstant = { model.modelMatrix, camIndex << 1 | model.isDynamic };
+	const PostProcessPushConstant pushconstant = { camIndex << 1 };
 	vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 
 	VkViewport viewport = {}; VkRect2D scissor = {};
@@ -312,7 +318,7 @@ void PostProcessPipeline::recordCommandBufferSecondary(const VkCommandBufferInhe
 
 	if (vrmode) {
 		const uint32_t camIndex = 1;
-		const PostProcessPushConstant pushconstant = { model.modelMatrix, uint32_t( camIndex << 1 | model.isDynamic ) };
+		const PostProcessPushConstant pushconstant = { camIndex << 1 };
 		vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 
 		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
@@ -367,7 +373,7 @@ void PostProcessPipeline::recordCommandBufferPrimary(const VkCommandBuffer& prim
 	vkCmdBindDescriptorSets(primaryCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
 
 	const uint32_t camIndex = 0;
-	const PostProcessPushConstant pushconstant = { model.modelMatrix, uint32_t( camIndex << 1 | model.isDynamic )};
+	const PostProcessPushConstant pushconstant = { camIndex << 1 };
 	vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 
 	VkViewport viewport = {}; VkRect2D scissor = {};
@@ -379,7 +385,7 @@ void PostProcessPipeline::recordCommandBufferPrimary(const VkCommandBuffer& prim
 
 	if (vrmode) {
 		const uint32_t camIndex = 1;
-		const PostProcessPushConstant pushconstant = { model.modelMatrix, uint32_t( camIndex << 1 | model.isDynamic ) };
+		const PostProcessPushConstant pushconstant = { camIndex << 1 };
 		vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 
 		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
@@ -421,7 +427,8 @@ void PostProcessPipeline::getViewportAndScissor(VkViewport& outViewport, VkRect2
 }
 
 void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& contextInfo, 
-	const VulkanRenderPass& renderPass, const Mesh& mesh) {
+	const VulkanRenderPass& renderPass, const Mesh& mesh, const bool vrmode) 
+{
 	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
 		VkCommandBufferAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -472,7 +479,30 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
+		const uint32_t camIndex = 0;
+		const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(vrmode)};
+		vkCmdPushConstants(commandBuffers[i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+
+		VkViewport viewport = {}; VkRect2D scissor = {};
+		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+		vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
+		vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
+
+
+
+
 		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+
+		if (vrmode) {
+			const uint32_t camIndex = 1;
+			const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(vrmode) };
+			vkCmdPushConstants(commandBuffers[i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+			getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+			vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
+			vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
+
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+		}
 
 		vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -484,14 +514,16 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 }
 
 void PostProcessPipeline::createInputDescriptors(const VulkanContextInfo& contextInfo, 
-	const std::vector<VulkanImage> vulkanImages)
+	const std::vector<VulkanImage>& vulkanImages)
 {
+	inputDescriptors.resize(contextInfo.swapChainImages.size());
 	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		inputDescriptors[i].numImageSamplers = 1;//TODO: determine num image samplers of previous stage from size of VulkanImage vector
 		inputDescriptors[i].createDescriptorSetLayoutPostProcess(contextInfo);
 		inputDescriptors[i].createDescriptorPoolPostProcess(contextInfo);
 
-		//may want to extent this to include cases where a post process has multiple render targets and therefor VulkanImages
-		std::vector<VulkanImage> vulkanImagesAtSwapIndex = { vulkanImages[i] };
+		//may want to extent this to include cases where a post process has multiple render targets and therefore VulkanImages
+		const std::vector<VulkanImage>& vulkanImagesAtSwapIndex = { vulkanImages[i] };
 		inputDescriptors[i].createDescriptorSetPostProcess(contextInfo, vulkanImagesAtSwapIndex);
 	}
 }

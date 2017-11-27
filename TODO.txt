@@ -4,9 +4,10 @@ get dynamic viewport and camera working for single traversal through scene
 remove redundant pipeline binds everytime recordCommandBufferSecondary is called and test again
 fix pipeline selection since it's wrong
 try input attachment option for pp desc set layout(cant since need more than 1 location for read)
+get fragment barrel/chromatic aberration PP working
 - get pass-through post process(PP) working, also need offscreenTriangle
 - can PostProcessPipeline be merged with Pipeline? is outputImage the only diff?
-- get fragment barrel/chromatic aberration PP working
+    also make it so that it can select when it needs to be Present vs offscreen
 - get mesh based barrel/chromatic aberration PP working
 - get radial density masking working
 - get MSAA working
@@ -15,4 +16,6 @@ try input attachment option for pp desc set layout(cant since need more than 1 l
 - add a descriptor type to reduce number of functions in VulkanDescriptor?
 - associate command pools with the correct abstraction
 - try combining the descriptor layouts into sets? is there benefit to this?
+- fix camera so its controlling middel of head and not left eye
 - lookup how to do single draw call vr
+

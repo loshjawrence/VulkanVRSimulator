@@ -54,12 +54,12 @@ private:
 	//submitting a vector of primary buffers didn't seem to work, let try recording all in one:
 	//beginbuf->beginpass->record all->endpass->endbuf
 	std::vector<uint32_t> textureMapFlagsToForwardPipelineIndex;//element is textureMapFlags index is pipeline index
-	std::vector<VkCommandBuffer> primaryForwardCommandBuffers;
 
 	//commandPools
 	//generally only need 1, but if you want to do multithreaded command recording each thread needs its own pool
 	std::vector<VkCommandPool> graphicsCommandPools;
 	std::vector<VkCommandPool> computeCommandPools;
+	std::vector<VkCommandBuffer> primaryForwardCommandBuffers;
 
 	
 	//camera
@@ -129,7 +129,7 @@ private:
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objType, 
 		uint64_t obj, size_t location, int32_t code, const char* layerPrefix, const char* msg, void* userData);
 
-	void allocateCommandBuffers();
+	void allocateGlobalCommandBuffers();
 	void addGraphicsCommandPool(const int num);
 	void beginRecordingPrimary(const uint32_t imageIndex);
 	void beginRecordingPrimary(VkCommandBufferInheritanceInfo& inheritanceInfo, const uint32_t imageIndex);
@@ -138,6 +138,8 @@ private:
 	void createSemaphores();
 	void createPipelines();
 	void destroyPipelines();
+	void destroyOffScreenRenderTargets();
+	void freeGlobalCommandBuffers();
 	void destroyPipelinesSemaphores();
 
 	static void VulkanApplication::GLFW_MousePosCallback(GLFWwindow * window, double xpos, double ypos);

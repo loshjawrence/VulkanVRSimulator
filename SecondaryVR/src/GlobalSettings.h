@@ -86,7 +86,7 @@ const std::vector<const char*> deviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
-#ifndef NDEBUG//could also use _DEBUG
+#ifndef _DEBUG
 const bool enableValidationLayers = false;
 #else
 const bool enableValidationLayers = true;

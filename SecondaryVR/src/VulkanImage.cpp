@@ -55,6 +55,7 @@ void VulkanImage::operator=(const VulkanImage& rightside) {
 void VulkanImage::createColorAttachmentImage(const VulkanContextInfo& contextInfo) {
 	createImage(contextInfo);
 	createImageView(contextInfo);
+	createImageSampler(contextInfo);
 	//transitionImageLayout(contextInfo, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
@@ -254,20 +255,36 @@ void VulkanImage::createImageSampler(const VulkanContextInfo& contextInfo) {
 	samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
 	samplerInfo.magFilter = VK_FILTER_LINEAR;
 	samplerInfo.minFilter = VK_FILTER_LINEAR;
-	samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	samplerInfo.anisotropyEnable = VK_TRUE;
-	samplerInfo.maxAnisotropy = 16;
 	samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	samplerInfo.unnormalizedCoordinates = VK_FALSE;
 	samplerInfo.compareEnable = VK_FALSE;
-	samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	if (imagetype == IMAGETYPE::COLOR_ATTACHMENT) {
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+		samplerInfo.anisotropyEnable = VK_FALSE;
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
+		samplerInfo.mipLodBias = 0.0f;
+		samplerInfo.minLod = 0.0f;
+		samplerInfo.maxLod = 0.0f;
+	} else if (imagetype == IMAGETYPE::TEXTURE) {
+		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+		samplerInfo.anisotropyEnable = VK_TRUE;
+		samplerInfo.maxAnisotropy = 16;
+		samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+		samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+	} else {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": tried to create sampler for image of unknown type!";
+		throw std::runtime_error(ss.str());
+	}
 
 	if (vkCreateSampler(contextInfo.device, &samplerInfo, nullptr, &sampler) != VK_SUCCESS) {
-		throw std::runtime_error("failed to create texture sampler!");
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create texture sampler!";
+		throw std::runtime_error(ss.str());
 	}
+
 }
 VkImageView VulkanImage::createImageView(const VkImage& image, const VkFormat& format,
 		const VkImageAspectFlags& aspectFlags, const VkDevice& device)

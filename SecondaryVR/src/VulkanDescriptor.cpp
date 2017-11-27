@@ -83,7 +83,6 @@ void initDescriptorSetLayoutTypes(const VulkanContextInfo& contextInfo) {
 		postProcessInputBinding.binding = 0;
 		postProcessInputBinding.descriptorCount = 1;
 		postProcessInputBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		//postProcessInputBinding.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;//try this later?
 		postProcessInputBinding.pImmutableSamplers = nullptr;
 		postProcessInputBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
@@ -236,6 +235,7 @@ void VulkanDescriptor::createDescriptorSetPostProcess(const VulkanContextInfo& c
 	if (vkAllocateDescriptorSets(contextInfo.device, &allocInfo, &descriptorSet) != VK_SUCCESS) {
 		throw std::runtime_error("failed to allocate descriptor set!");
 	}
+
 
 	//TODO: make a vector and cycle through Texture vector to determine where they should go
 	std::vector<VkDescriptorImageInfo> imageInfos(numImageSamplers);
