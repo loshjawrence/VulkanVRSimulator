@@ -24,9 +24,9 @@ layout(location = 5) in vec3 inBiTan;
 
 layout(location = 0) out vec3 fragColor;
 layout(location = 1) out vec2 fragTexCoord;
-layout(location = 2) out vec3 fragNor;
-layout(location = 3) out vec3 fragTan;
-layout(location = 4) out vec3 fragBiTan;
+layout(location = 2) out vec3 worldNor;
+layout(location = 3) out vec3 worldTan;
+layout(location = 4) out vec3 worldBiTan;
 
 out gl_PerVertex {
     vec4 gl_Position;
@@ -44,9 +44,9 @@ void main() {
 
     fragColor       = inColor;
     fragTexCoord    = inTexCoord;
-	fragNor         = normalize(transpose(inverse(mat3(updatedModelMatrix))) * inNor);
-    fragTan         = normalize(mat3(updatedModelMatrix) * inTan);
-    fragBiTan       = normalize(mat3(updatedModelMatrix) * inBiTan);
+	worldNor         = normalize(transpose(inverse(mat3(updatedModelMatrix))) * inNor);
+    worldTan         = normalize(mat3(updatedModelMatrix) * inTan);
+    worldBiTan       = normalize(mat3(updatedModelMatrix) * inBiTan);
 
 }
 

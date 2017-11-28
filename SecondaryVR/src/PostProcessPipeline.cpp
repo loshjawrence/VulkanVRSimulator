@@ -211,12 +211,13 @@ void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
 	//////////////////////////////
 	//// PUSH CONSTANT RANGES ////
 	//////////////////////////////
-	//std::vector<VkPushConstantRange> pushContantRanges;
-	//VkPushConstantRange push1 = {};
-	//push1.offset = 0;
-	//push1.size = sizeof(PostProcessPushConstant);
-	//push1.stageFlags = PostProcessPushConstant::stages;
-	//pushContantRanges.push_back(push1);
+	std::vector<VkPushConstantRange> pushContantRanges;
+	VkPushConstantRange push1 = {};
+	push1.offset = 0;
+	push1.size = sizeof(PostProcessPushConstant);
+	push1.stageFlags = PostProcessPushConstant::stages;
+	pushContantRanges.push_back(push1);
+
 
 	///////////////////////
 	//// DYNAMIC STATE ////
@@ -237,8 +238,8 @@ void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	pipelineLayoutInfo.setLayoutCount = 1;
 	pipelineLayoutInfo.pSetLayouts = setLayouts;
-	//pipelineLayoutInfo.pushConstantRangeCount = pushContantRanges.size();
-	//pipelineLayoutInfo.pPushConstantRanges = pushContantRanges.data();
+	pipelineLayoutInfo.pushConstantRangeCount = pushContantRanges.size();
+	pipelineLayoutInfo.pPushConstantRanges = pushContantRanges.data();
 
 	if (vkCreatePipelineLayout(contextInfo.device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS) {
 		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create pipeline layout!";

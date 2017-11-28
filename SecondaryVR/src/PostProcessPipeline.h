@@ -27,7 +27,7 @@ class Model;
 
 struct PostProcessPushConstant {
 	uint32_t toggleFlags;
-	static const VkShaderStageFlags stages = VK_SHADER_STAGE_VERTEX_BIT;
+	static const VkShaderStageFlags stages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 };
 
 class PostProcessPipeline {

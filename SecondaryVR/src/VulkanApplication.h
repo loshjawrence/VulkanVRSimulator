@@ -80,6 +80,7 @@ private:
 	VulkanRenderPass allRenderPasses;
 	std::vector<PostProcessPipeline> postProcessPipelines;
 	Mesh ndcTriangle;
+	Mesh ndcBarrelMesh;
 
 	//used for fps tracker
 	double oldtime = 0.f;

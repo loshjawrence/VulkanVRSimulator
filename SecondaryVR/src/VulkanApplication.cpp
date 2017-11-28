@@ -38,8 +38,8 @@ std::string convertFloatToString(double number)
 }
 
 void VulkanApplication::loadModels() {
-	const int num = 2;
-	const int numMeshesPerStride = 2;
+	const int num = 4;
+	const int numMeshesPerStride = 4;
 	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
 	for (int i = 0; i < num/numMeshesPerStride; i += numMeshesPerStride) {
 		const float x = static_cast<float>(rng.nextUInt(1));
@@ -53,8 +53,14 @@ void VulkanApplication::loadModels() {
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(5.0f)),glm::vec3(y, z, x)) };
 		//defaultScene[i+1] = { std::string("res/objects/breakfast_room/breakfast_room.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/cerberus_maximov/source/Cerberus_LP.FBX.fbx"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
 		defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
 			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
+		defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
+		defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
 		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
 			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
@@ -474,6 +480,7 @@ void VulkanApplication::createPipelines() {
 
 	//post process pipelines
 	ndcTriangle = Mesh(contextInfo, MESHTYPE::NDCTRIANGLE);//ndc triangle for post processing
+	ndcBarrelMesh = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH);//ndc triangle for post processing
 	postProcessPipelines.resize(allShaders_PostProcessPipeline.size());
 	for (uint32_t i = 0; i < allShaders_PostProcessPipeline.size(); ++i) {
 		const uint32_t numImageSamplers = allShaders_PostProcessPipeline[i].second;
@@ -491,7 +498,7 @@ void VulkanApplication::createPipelines() {
 	}
 	//create the static command buffers(no dynamic input for post processing)
 	for (auto& pipeline : postProcessPipelines) {
-		pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ndcTriangle, camera.vrmode);
+		pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ndcBarrelMesh, camera.vrmode);
 	}
 
 

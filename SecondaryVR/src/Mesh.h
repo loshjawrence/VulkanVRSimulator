@@ -17,7 +17,7 @@ struct Texture {
 };
 
 enum class MESHTYPE {
-	NDCTRIANGLE = 0,
+	NDCTRIANGLE = 0, NDCBARRELMESH,
 };
 
 class Mesh {
@@ -49,6 +49,7 @@ public:
 		const std::vector<Texture>& textures, const VulkanContextInfo& contextInfo);
 	void createDescriptor(const VulkanContextInfo& contextInfo, const VkBuffer& ubo, const uint32_t sizeofUBOstruct);
 	void createNDCTriangle(const VulkanContextInfo& contextInfo);
+	void createNDCBarrelMesh(const VulkanContextInfo& contextInfo);
 
 private:
 	void setupVulkanBuffers(const VulkanContextInfo& contextInfo);

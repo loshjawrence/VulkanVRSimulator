@@ -16,7 +16,7 @@ public:
 	const glm::vec3 worldUp = glm::vec3(0.f, 1.f, 0.f);
 	float ipd = 0.009f;//assets need to be made with scale in mind so this is just tuned to look reasonable
 	float movementspeed = 10.f;
-	float looksensitivity = 0.5f;
+	float looksensitivity = 0.7f;
 	float yaw = -90.f;//about y, looking down local -z
 	float pitch = 0.f;//about x
 	float fov = 45.f;
