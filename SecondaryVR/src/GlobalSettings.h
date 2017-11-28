@@ -58,17 +58,25 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Fo
 //name of shaders and number of input sampler images
 const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_PostProcessPipeline =
 {
-	//passthrough
-	{{"src/shaders/ppPassthrough.vert.spv",
-	"src/shaders/ppPassthrough.frag.spv"},
-	1},
-	////Barrel/Aberration Fragment
+	////passthrough
+	//{{"src/shaders/ppPassthrough.vert.spv",
+	//"src/shaders/ppPassthrough.frag.spv"},
+	//1},
+	////Barrel/Aberration Fragment first version
 	//{{"src/shaders/ppPassthrough.vert.spv",
 	//"src/shaders/ppBarrelAbFrag.frag.spv"},
 	//1},
+	//Barrel/Aberration Fragment a lot are using this
+	{{"src/shaders/ppPassthrough.vert.spv",
+	"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
+	1},
 	////Barrel/Aberration Mesh
 	//{{"src/shaders/ppBarrelAbMesh.vert.spv",
 	//"src/shaders/ppBarrelAbMesh.frag.spv"},
+	//1},
+	////Barrel/Aberration PreCalc Mesh
+	//{{"src/shaders/ppBarrelAbPreCalcMesh.vert.spv",
+	//"src/shaders/ppBarrelAbPreCalcMesh.frag.spv"},
 	//1},
 
 

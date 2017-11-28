@@ -20,10 +20,13 @@ public:
 	float yaw = -90.f;//about y, looking down local -z
 	float pitch = 0.f;//about x
 	float fov = 45.f;
-	//HALF
-	float width = 1080;
-	float height = 600;
-	//FULL
+	//DK1 full
+	float width = 1280;
+	float height = 800;
+	//HALF modern
+	//float width = 1080;
+	//float height = 600;
+	//FULL modern
 	//float width = 2160;
 	//float height = 1200;
 	float near = 0.1f;
