@@ -7,6 +7,7 @@
 #include "GlobalSettings.h"
 #include <vector>
 #include "VulkanImage.h"
+#include "Camera.h"
 
 //This class holds vulkan things that get created once and are used for the duration of the program
 //these things generally won't change across typical vulkan applications
@@ -16,6 +17,7 @@ struct PhysicalDeviceSurfaceDetails {
     std::vector<VkSurfaceFormatKHR> formats;
     std::vector<VkPresentModeKHR> presentModes;
 };
+
 
 class VulkanContextInfo {
 public:
@@ -45,6 +47,8 @@ public:
 	VkFormat depthFormat;
 	VulkanImage depthImage;
 
+	//Camera
+	Camera camera;
 
 	//instance
 	VkInstance instance;

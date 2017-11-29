@@ -11,7 +11,7 @@
 
 Mesh::Mesh(const VulkanContextInfo& contextInfo, const MESHTYPE meshtype, uint32_t camIndex) {
 	if (meshtype == MESHTYPE::NDCTRIANGLE)					createNDCTriangle(contextInfo);
-	else if (meshtype == MESHTYPE::NDCBARRELMESH)			createNDCBarrelMesh(contextInfo);
+	else if (meshtype == MESHTYPE::NDCBARRELMESH)			createNDCBarrelMesh(contextInfo, camIndex);
 	else if (meshtype == MESHTYPE::NDCBARRELMESH_PRECALC)	createNDCBarrelMeshPreCalc(contextInfo,camIndex);
 }
 
@@ -95,8 +95,18 @@ void Mesh::createNDCTriangle(const VulkanContextInfo& contextInfo) {
 	VulkanBuffer::createIndexBuffer(contextInfo, mIndices, indexBuffer, indexBufferMemory);
 }
 
-void Mesh::genGridMesh(const VulkanContextInfo& contextInfo) {
+void Mesh::genGridMesh(const VulkanContextInfo& contextInfo, const uint32_t camIndex, const uint32_t shift) {
 	//top left (vulk top left of screen is -1,-1 and uv 0, 0) also the front face is set to ccw
+    float x = (camIndex == 0) ? 0.f : 0.5f;
+    float y = 0.0;
+    float w = 0.5;
+    float h = 1.0;
+
+	//ndc offset
+    //float XCenterOffset = (camIndex == 1) ? -Distortion_XCenterOffset : Distortion_XCenterOffset;
+	//const float shiftVal = (XCenterOffset*(uint32_t)contextInfo.camera.vrmode*shift);
+	//const float xStart = -1.f + shiftVal;
+
 	const float stride = 2.f / quadsPerDim;
 	//vertices
 	mVertices.reserve((quadsPerDim+1)*2);
@@ -106,7 +116,10 @@ void Mesh::genGridMesh(const VulkanContextInfo& contextInfo) {
 		for (float x = -1.f; x < 1.f+stride*0.5f; x += stride) {
 			Vertex v;
 			v.pos = glm::vec3(x, y, 0.5f);
+			//v.color.r = shiftVal;//if needed in shader
 			v.uv = glm::vec2((x+1.f)*0.5f, (y+1.f)*0.5f);
+			//std::cout << "\n\nPos:( " << v.pos.x << ", " << v.pos.y << ")";
+			//std::cout << "\nUV:( " << v.uv.x << ", " << v.uv.y << ")";
 			mVertices.push_back(v);
 		}
 	}
@@ -119,6 +132,8 @@ void Mesh::genGridMesh(const VulkanContextInfo& contextInfo) {
 			first = y*(quadsPerDim+1) + x;
 			second = first + 1 + quadsPerDim + 1;
 			third = first + 1;
+
+			//std::cout << "\n\nf: " << first << " s: " << second << " t: " << third;
 			mIndices.push_back(first);
 			mIndices.push_back(second);
 			mIndices.push_back(third);
@@ -129,13 +144,14 @@ void Mesh::genGridMesh(const VulkanContextInfo& contextInfo) {
 			mIndices.push_back(first);
 			mIndices.push_back(second);
 			mIndices.push_back(third);
+			//std::cout << "\nf: " << first << " s: " << second << " t: " << third;
 		}
 	}
 }
 
-void Mesh::createNDCBarrelMesh(const VulkanContextInfo& contextInfo) {
+void Mesh::createNDCBarrelMesh(const VulkanContextInfo& contextInfo, const uint32_t camIndex) {
 	//top left (vulk top left of screen is -1,-1 and uv 0, 0) also the front face is set to ccw
-	genGridMesh(contextInfo);
+	genGridMesh(contextInfo, camIndex, 1);
 	VulkanBuffer::createVertexBuffer(contextInfo, mVertices, vertexBuffer, vertexBufferMemory);
 	VulkanBuffer::createIndexBuffer(contextInfo, mIndices, indexBuffer, indexBufferMemory);
 }
@@ -145,8 +161,9 @@ void getSourceUV(const uint32_t camIndex, const glm::vec2& oTexCoord,
 	glm::vec2& out_tcRed, glm::vec2& out_tcGreen, glm::vec2& out_tcBlue) {
 	//code from old oculus demo implementation
 	// Values that were scattered throughout the Oculus world demo
-	const glm::vec4 HmdWarpParam(1.0, 0.22, 0.24, 0.0); // For the 7-inch device
-	const glm::vec4 ChromAbParam(0.996, -0.004, 1.014, 0.0);
+
+	const glm::vec4 HmdWarpParam = glm::vec4(1.0f, 0.22f, 0.24f, 0.0f); // For the 7-inch device
+	const glm::vec4 ChromAbParam = glm::vec4(0.996f, -0.004f, 1.014f, 0.f);
 	const float HMD_HResolution = 1280.0;
 	const float HMD_VResolution = 800.0;
 	const float HMD_HScreenSize = 0.14976;
@@ -168,7 +185,6 @@ void getSourceUV(const uint32_t camIndex, const glm::vec2& oTexCoord,
 		HmdWarpParam.y * fitRadiusSquared +
 		HmdWarpParam.z * fitRadiusSquared * fitRadiusSquared +
 		HmdWarpParam.w * fitRadiusSquared * fitRadiusSquared * fitRadiusSquared;
-
     float x = (camIndex == 0) ? 0.f : 0.5f;
     float y = 0.0;
     float w = 0.5;
@@ -261,7 +277,7 @@ glm::vec3 distortInverse(glm::vec3 ndc, const uint32_t camIndex) {
 //only use these meshes for vr mode
 void Mesh::createNDCBarrelMeshPreCalc(const VulkanContextInfo& contextInfo, const uint32_t camIndex) {
 	//top left (vulk top left of screen is -1,-1 and uv 0, 0) also the front face is set to ccw
-	genGridMesh(contextInfo);
+	genGridMesh(contextInfo,camIndex,0);
 	const uint32_t vrMode = 1;
 
 

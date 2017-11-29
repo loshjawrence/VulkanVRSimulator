@@ -63,10 +63,9 @@ private:
 
 	
 	//camera
-	Camera camera = Camera();
 	bool firstmouse = true;
-	float lastX = camera.width / 2.f;
-	float lastY = camera.height / 2.f;
+	float lastX = startingWidth / 2.f;
+	float lastY = startingHeight / 2.f;
 
     VkBuffer uniformBuffer;
     VkDeviceMemory uniformBufferMemory;
@@ -80,7 +79,7 @@ private:
 	VulkanRenderPass allRenderPasses;
 	std::vector<PostProcessPipeline> postProcessPipelines;
 	Mesh ndcTriangle;
-	Mesh ndcBarrelMesh;
+	Mesh ndcBarrelMesh[2];
 	Mesh ndcBarrelMesh_PreCalc[2];//0 left, 1 right
 
 	//used for fps tracker

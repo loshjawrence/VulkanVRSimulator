@@ -73,8 +73,8 @@ void Camera::processScrollAndUpdateView(const float yoffset) {
 
 void Camera::updateDimensions(const VkExtent2D& swapChainExtent) {
 	const float scale = vrmode ? 0.5f : 1.f;
-	width = swapChainExtent.width * scale;
-	height = swapChainExtent.height * scale;
+	width = swapChainExtent.width * scale * virtualRenderTargetScaling;
+	height = swapChainExtent.height * virtualRenderTargetScaling;
 	updatePerspectiveProjection();
 }
 

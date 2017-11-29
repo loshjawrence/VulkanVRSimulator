@@ -337,27 +337,20 @@ void VulkanGraphicsPipeline::getViewportAndScissor(VkViewport& outViewport, VkRe
 	outViewport.maxDepth = 1.0f;
 
 	if (vrmode) {
-		outViewport.width = (float)contextInfo.swapChainExtent.width * 0.5f;
-		outViewport.height = (float)contextInfo.swapChainExtent.height;
-		if (camIndex == 0) {
-			outViewport.x = 0.0f;
-			outViewport.y = 0.0f;
-			outScissor.offset = { (int32_t )outViewport.x,		(int32_t )outViewport.y };
-			outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
-		} else {
-			outViewport.x = outViewport.width;
-			outViewport.y = 0.0f;
-			outScissor.offset = { (int32_t )outViewport.x,		(int32_t )outViewport.y };
-			outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
-		}
+		//outViewport.width = (float)contextInfo.camera.width * 0.5f;
+		outViewport.width = (float)contextInfo.camera.width;
+		outViewport.height = (float)contextInfo.camera.height;
+		outViewport.x = (0 == camIndex) ? 0.0f : outViewport.width;
+		outViewport.y = 0.0f;
+		outScissor.offset = { (int32_t)outViewport.x,		(int32_t)outViewport.y };
+		outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
 	} else {
 		outViewport.x = 0.0f;
 		outViewport.y = 0.0f;
-		outViewport.width = (float)contextInfo.swapChainExtent.width;
-		outViewport.height = (float)contextInfo.swapChainExtent.height;
-
+		outViewport.width = (float)contextInfo.camera.width;
+		outViewport.height = (float)contextInfo.camera.height;
 		outScissor.offset = { 0, 0 };
-		outScissor.extent = contextInfo.swapChainExtent;
+		outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
 	}
 }
 

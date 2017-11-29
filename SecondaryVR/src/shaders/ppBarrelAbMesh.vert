@@ -111,7 +111,8 @@ void main() {
     fragUV.x = (fragUV.x * (1.f - 0.5*vrMode)) + 0.5f*camIndex;
 
     if(1 == vrMode) {
-        gl_Position = vec4(distortInverse(inPos), 1.f);
+        gl_Position     = vec4(inPos, 1.0);
+//        gl_Position = vec4(distortInverse(inPos), 1.f);
     } else {
         gl_Position = vec4(inPos, 1.f);
     }

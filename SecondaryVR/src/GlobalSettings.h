@@ -10,7 +10,8 @@
 #include <tuple>
 #include <string>
 
-
+const float startingWidth = 1280;
+const float startingHeight = 800;
 const uint32_t HAS_NONE		= 1 << 0; 
 const uint32_t HAS_DIFFUSE	= 1 << 1; 
 const uint32_t HAS_NOR		= 1 << 2; 
@@ -74,7 +75,7 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Po
 	//{{"src/shaders/ppBarrelAbMesh.vert.spv",
 	//"src/shaders/ppBarrelAbMesh.frag.spv"},
 	//1},
-	////Barrel/Aberration PreCalc Mesh //perf: 4.44
+	//Barrel/Aberration PreCalc Mesh //perf: 4.44
 	//{{"src/shaders/ppBarrelAbMeshPreCalc.vert.spv",
 	//"src/shaders/ppBarrelAbMeshPreCalc.frag.spv"},
 	//1},

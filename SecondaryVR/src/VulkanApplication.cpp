@@ -38,15 +38,15 @@ std::string convertFloatToString(double number)
 }
 
 void VulkanApplication::loadModels() {
-	const int num = 4;
-	const int numMeshesPerStride = 4;
+	const int num = 1;
+	const int numMeshesPerStride = 1;
 	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
 	for (int i = 0; i < num/numMeshesPerStride; i += numMeshesPerStride) {
 		const float x = static_cast<float>(rng.nextUInt(1));
 		const float y = static_cast<float>(rng.nextUInt(1));
 		const float z = static_cast<float>(rng.nextUInt(1));
-		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
 		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
@@ -55,14 +55,14 @@ void VulkanApplication::loadModels() {
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/cerberus_maximov/source/Cerberus_LP.FBX.fbx"), 1,
 			//glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
-		defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
-		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
+		//defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
+		//defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
+		//defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
@@ -132,7 +132,7 @@ void VulkanApplication::drawFrame() {
 	//	    //TODO: the pipeline selection is wrong
 	//		const uint32_t index = getForwardPipelineIndexFromTextureMapFlags(mesh.descriptor.textureMapFlags);
 	//		forwardPipelines[index].recordCommandBufferSecondary(
-	//			inheritanceInfo, imageIndex, contextInfo, model, mesh, camera.vrmode);
+	//			inheritanceInfo, imageIndex, contextInfo, model, mesh, contextInfo.camera.vrmode);
 	//	}
 	//}
 
@@ -159,7 +159,7 @@ void VulkanApplication::drawFrame() {
 	      //TODO: the pipeline selection is wrong
 			const uint32_t index = getForwardPipelineIndexFromTextureMapFlags(mesh.descriptor.textureMapFlags);
 			forwardPipelines[index].recordCommandBufferPrimary(
-				primaryForwardCommandBuffers[imageIndex], imageIndex, contextInfo, model, mesh, camera.vrmode);
+				primaryForwardCommandBuffers[imageIndex], imageIndex, contextInfo, model, mesh, contextInfo.camera.vrmode);
 		}
 	}
 	endRecordingPrimary(imageIndex);
@@ -267,7 +267,15 @@ void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& in
 	//renderPassInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
 	renderPassInfo.framebuffer = forwardPipelinesFramebuffers[imageIndex];
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
+//	renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
+	VkExtent2D renderTargetExent;
+	float vrScaleXback = contextInfo.camera.vrmode ? 2.f : 1.f;
+	renderTargetExent.width = vrScaleXback * static_cast<uint32_t>(contextInfo.camera.width);
+	renderTargetExent.height = static_cast<uint32_t>(contextInfo.camera.height);
+	renderPassInfo.renderArea.extent.height = renderTargetExent.height;
+	renderPassInfo.renderArea.extent.width = renderTargetExent.width;
+	//renderPassInfo.renderArea.extent.width = static_cast<uint32_t>(contextInfo.camera.width);
+	//renderPassInfo.renderArea.extent.height = static_cast<uint32_t>(contextInfo.camera.height);
 
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -292,7 +300,15 @@ void VulkanApplication::beginRecordingPrimary(const uint32_t imageIndex) {
 	//renderPassInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
 	renderPassInfo.framebuffer = forwardPipelinesFramebuffers[imageIndex];
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
+	//renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
+	VkExtent2D renderTargetExent;
+	float vrScaleXback = contextInfo.camera.vrmode ? 2.f : 1.f;
+	renderTargetExent.width = vrScaleXback * static_cast<uint32_t>(contextInfo.camera.width);
+	renderTargetExent.height = static_cast<uint32_t>(contextInfo.camera.height);
+	renderPassInfo.renderArea.extent.height = renderTargetExent.height;
+	renderPassInfo.renderArea.extent.width = renderTargetExent.width;
+	//renderPassInfo.renderArea.extent.height = static_cast<uint32_t>(contextInfo.camera.height);
+	//renderPassInfo.renderArea.extent.width = static_cast<uint32_t>(contextInfo.camera.width);
 
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -330,9 +346,9 @@ void VulkanApplication::createSemaphores() {
 void VulkanApplication::updateUniformBuffer() {
 	UniformBufferObject ubo = {};
 	//ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-	ubo.view[0] = camera.view[0];
-	ubo.view[1] = camera.view[1];
-	ubo.proj = camera.proj;
+	ubo.view[0] = contextInfo.camera.view[0];
+	ubo.view[1] = contextInfo.camera.view[1];
+	ubo.proj = contextInfo.camera.proj;
 	ubo.proj[1][1] *= -1;//need for correct z-buffer order
 	ubo.time = time;
 
@@ -414,19 +430,19 @@ void VulkanApplication::processInputAndUpdateFPS() {
 			glfwSetWindowShouldClose(window, true);
 
 		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-			camera.processKeyboardAndUpdateView(MovementDirection::FORWARD, deltaTime);
+			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::FORWARD, deltaTime);
 		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-			camera.processKeyboardAndUpdateView(MovementDirection::BACKWARD, deltaTime);
+			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::BACKWARD, deltaTime);
 		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-			camera.processKeyboardAndUpdateView(MovementDirection::LEFT, deltaTime);
+			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::LEFT, deltaTime);
 		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-			camera.processKeyboardAndUpdateView(MovementDirection::RIGHT, deltaTime);
+			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::RIGHT, deltaTime);
 		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-			camera.processKeyboardAndUpdateView(MovementDirection::UP, deltaTime);
+			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::UP, deltaTime);
 		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-			camera.processKeyboardAndUpdateView(MovementDirection::DOWN, deltaTime);
+			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::DOWN, deltaTime);
 		if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
-			camera.updateVrModeAndCameras();
+			contextInfo.camera.updateVrModeAndCameras();
 			recreateSwapChain();
 		}
 }
@@ -480,7 +496,8 @@ void VulkanApplication::createPipelines() {
 
 	//post process pipelines
 	ndcTriangle = Mesh(contextInfo, MESHTYPE::NDCTRIANGLE);//ndc triangle for post processing
-	ndcBarrelMesh = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH);//ndc triangle for post processing
+	ndcBarrelMesh[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 0);
+	ndcBarrelMesh[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 1);
 	ndcBarrelMesh_PreCalc[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 0);
 	ndcBarrelMesh_PreCalc[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 1);
 	postProcessPipelines.resize(allShaders_PostProcessPipeline.size());
@@ -500,20 +517,20 @@ void VulkanApplication::createPipelines() {
 	}
 	//create the static command buffers(no dynamic input for post processing)
 	std::vector<Mesh> ppMeshes; 
-	if (camera.vrmode) {
+	if (contextInfo.camera.vrmode) {
 		//ppMeshes.push_back(ndcBarrelMesh_PreCalc[0]);
 		//ppMeshes.push_back(ndcBarrelMesh_PreCalc[1]);
-		ppMeshes.push_back(ndcBarrelMesh);
-		ppMeshes.push_back(ndcBarrelMesh);
-//		ppMeshes.push_back(ndcTriangle);
-//		ppMeshes.push_back(ndcTriangle);
+		ppMeshes.push_back(ndcBarrelMesh[0]);
+		ppMeshes.push_back(ndcBarrelMesh[1]);
+		//ppMeshes.push_back(ndcTriangle);
+		//ppMeshes.push_back(ndcTriangle);
 	} else {
 		ppMeshes.push_back(ndcTriangle);
 	}
 
 	for (auto& pipeline : postProcessPipelines) {
-		//pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ndcBarrelMesh, camera.vrmode);
-		pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ppMeshes, camera.vrmode);
+		//pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ndcBarrelMesh, contextInfo.camera.vrmode);
+		pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ppMeshes, contextInfo.camera.vrmode);
 	}
 
 
@@ -522,6 +539,10 @@ void VulkanApplication::createPipelines() {
 void VulkanApplication::initForwardPipelinesVulkanImagesAndFramebuffers() {
 	forwardPipelinesVulkanImages.resize(contextInfo.swapChainImages.size());
 	forwardPipelinesFramebuffers.resize(contextInfo.swapChainImages.size());
+	VkExtent2D renderTargetExent;
+	float vrScaleXback = contextInfo.camera.vrmode ? 2.f : 1.f;
+	renderTargetExent.width = vrScaleXback * static_cast<uint32_t>(contextInfo.camera.width);
+	renderTargetExent.height = static_cast<uint32_t>(contextInfo.camera.height);
 	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
 		//forwardPipelinesVulkanImages[i].image = contextInfo.swapChainImages[i];
 		//forwardPipelinesVulkanImages[i].imageView = contextInfo.swapChainImageViews[i];
@@ -530,7 +551,8 @@ void VulkanApplication::initForwardPipelinesVulkanImagesAndFramebuffers() {
 
 		//TODO: if flag is present then use swapchain format otherwise 16F
 		//FOR LATER://these will need to be rebuilt in recreateswapchain?
-		forwardPipelinesVulkanImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.swapChainExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
+		//forwardPipelinesVulkanImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.swapChainExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
+		forwardPipelinesVulkanImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, renderTargetExent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
 
 	}
 
@@ -549,8 +571,12 @@ void VulkanApplication::initForwardPipelinesVulkanImagesAndFramebuffers() {
 		framebufferCreateInfo.renderPass = allRenderPasses.renderPass;
 		framebufferCreateInfo.pAttachments = attachments.data();
 		framebufferCreateInfo.attachmentCount = attachments.size();
-		framebufferCreateInfo.width = contextInfo.swapChainExtent.width;
-		framebufferCreateInfo.height = contextInfo.swapChainExtent.height;
+		//framebufferCreateInfo.width = contextInfo.swapChainExtent.width;
+		//framebufferCreateInfo.height = contextInfo.swapChainExtent.height;
+		//framebufferCreateInfo.width = static_cast<uint32_t>(contextInfo.camera.width);
+		//framebufferCreateInfo.height = static_cast<uint32_t>(contextInfo.camera.height);
+		framebufferCreateInfo.width = renderTargetExent.width;
+		framebufferCreateInfo.height = renderTargetExent.height;
 		framebufferCreateInfo.layers = 1;
 
 		if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &forwardPipelinesFramebuffers[i]) != VK_SUCCESS) {
@@ -615,6 +641,8 @@ void VulkanApplication::recreateSwapChain() {
 
 	contextInfo.createSwapChain(window);
 	contextInfo.createSwapChainImageViews();
+	//update camera
+	contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
 	contextInfo.createDepthImage();
 
 	allRenderPasses.createRenderPasses(contextInfo);
@@ -626,8 +654,6 @@ void VulkanApplication::recreateSwapChain() {
 	createPipelines();
 
 
-	//update camera
-	camera.updateDimensions(contextInfo.swapChainExtent);
 }
 
 
@@ -666,7 +692,7 @@ void VulkanApplication::initWindow() {
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	window = glfwCreateWindow(camera.width, camera.height, "VulkanVR", nullptr, nullptr);
+	window = glfwCreateWindow(startingWidth , startingHeight, "VulkanVR", nullptr, nullptr);
 	if (!window) {
 		glfwTerminate();
 		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create glfw window!";
@@ -732,7 +758,7 @@ void VulkanApplication::GLFW_MousePosCallback(GLFWwindow * window, double xpos, 
 	app->lastX = xpos;
 	app->lastY = ypos;
 
-	app->camera.processMouseAndUpdateView(xoffset, yoffset);
+	app->contextInfo.camera.processMouseAndUpdateView(xoffset, yoffset);
 }
 
 void VulkanApplication::GLFW_MouseButtonCallback(GLFWwindow * window, int button, int action, int mods) {
@@ -743,6 +769,6 @@ void VulkanApplication::GLFW_KeyCallback(GLFWwindow * window, int key, int scanm
 
 void VulkanApplication::GLFW_ScrollCallback(GLFWwindow* window, double xoffset, double yoffset) {
 	VulkanApplication* app = reinterpret_cast<VulkanApplication*>(glfwGetWindowUserPointer(window));
-	app->camera.processScrollAndUpdateView(yoffset);
+	app->contextInfo.camera.processScrollAndUpdateView(yoffset);
 }
 

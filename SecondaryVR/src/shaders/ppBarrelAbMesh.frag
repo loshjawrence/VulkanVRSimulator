@@ -19,7 +19,8 @@ layout(location = 4) in vec3 fragBiTan;
 layout(location = 0) out vec4 outColor;
 
 //void main() {
-//    outColor = texture(texSampler, fragUV);
+////    outColor = texture(texSampler, fragUV);
+////    outColor = vec4(.x, fragUV.y, 0.f, 1.f);
 //}
 
 
@@ -106,6 +107,8 @@ void main() {
     if(any(greaterThan(abs(equivNDC), vec2(1.f)))) {
         outColor = vec4(0.0, 0.0, 0.0, 1.0);
     } else {
+
+//        outColor = vec4(tcGreen.x, tcGreen.y, 0.f, 1.f);
 		outColor = vec4(texture(texSampler, tcRed).r,
 						texture(texSampler, tcGreen).g,
 						texture(texSampler, tcBlue).b, 1.f);

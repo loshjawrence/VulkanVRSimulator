@@ -1,5 +1,6 @@
 #pragma once
 #include "VulkanContextInfo.h"
+#include "Camera.h"
 #include <stdexcept>
 #include <iostream>
 #include <sstream>
@@ -22,6 +23,7 @@ VulkanContextInfo::VulkanContextInfo(GLFWwindow* window) {
 	createSwapChain(window);
 	createSwapChainImageViews();
 	determineDepthFormat();
+	camera = Camera();
 	createDepthImage();
 }
 
@@ -246,7 +248,12 @@ VkFormat VulkanContextInfo::findSupportedFormat(const std::vector<VkFormat>& can
 
 void VulkanContextInfo::createDepthImage() {
 	determineDepthFormat();
-	depthImage = VulkanImage(IMAGETYPE::DEPTH, swapChainExtent, depthFormat, *this);
+	//depthImage = VulkanImage(IMAGETYPE::DEPTH, swapChainExtent, depthFormat, *this);
+	VkExtent2D renderTargetExtent;
+	float vrScaleXback = camera.vrmode ? 2.f : 1.f;
+	renderTargetExtent.width = vrScaleXback * static_cast<uint32_t>(camera.width);
+	renderTargetExtent.height = static_cast<uint32_t>(camera.height);
+	depthImage = VulkanImage(IMAGETYPE::DEPTH, renderTargetExtent, depthFormat, *this);
 }
 
 void VulkanContextInfo::determineDepthFormat() {
