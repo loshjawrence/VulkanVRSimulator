@@ -62,8 +62,10 @@ public:
 	void addCommandPools(const VulkanContextInfo& contextInfo, const uint32_t num);
 	void createFramebuffers(const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass);
 	void createInputDescriptors(const VulkanContextInfo& contextInfo, const std::vector<VulkanImage>& vulkanImages);
+	//void createStaticCommandBuffers(const VulkanContextInfo& contextInfo,
+	//	const VulkanRenderPass& renderPass, const Mesh& mesh, const bool vrmode);
 	void createStaticCommandBuffers(const VulkanContextInfo& contextInfo,
-		const VulkanRenderPass& renderPass, const Mesh& mesh, const bool vrmode);//static since no dynamic input, mesh is just quad or triangle
+		const VulkanRenderPass& renderPass, const std::vector<Mesh>& meshes, const bool vrmode);//static since no dynamic input, mesh is just quad or triangle
 
 
 	void allocateCommandBuffers(const VulkanContextInfo& contextInfo);

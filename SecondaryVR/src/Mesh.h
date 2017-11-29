@@ -17,7 +17,7 @@ struct Texture {
 };
 
 enum class MESHTYPE {
-	NDCTRIANGLE = 0, NDCBARRELMESH,
+	NDCTRIANGLE = 0, NDCBARRELMESH, NDCBARRELMESH_PRECALC
 };
 
 class Mesh {
@@ -41,8 +41,12 @@ public:
 	std::vector<int> norindices;
 	std::vector<int> heightindices;
 
+
+	//for barrel mesh
+	uint32_t quadsPerDim = 20;
+
 public: 
-	Mesh(const VulkanContextInfo& contextInfo, const MESHTYPE);
+	Mesh(const VulkanContextInfo& contextInfo, const MESHTYPE, uint32_t camIndex = 0);
 	Mesh();
 	~Mesh();
 	Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices,
@@ -50,6 +54,8 @@ public:
 	void createDescriptor(const VulkanContextInfo& contextInfo, const VkBuffer& ubo, const uint32_t sizeofUBOstruct);
 	void createNDCTriangle(const VulkanContextInfo& contextInfo);
 	void createNDCBarrelMesh(const VulkanContextInfo& contextInfo);
+	void createNDCBarrelMeshPreCalc(const VulkanContextInfo& contextInfo, const uint32_t camIndex);
+	void genGridMesh(const VulkanContextInfo& contextInfo);
 
 private:
 	void setupVulkanBuffers(const VulkanContextInfo& contextInfo);

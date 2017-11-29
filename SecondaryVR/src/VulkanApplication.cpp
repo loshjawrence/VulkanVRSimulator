@@ -38,15 +38,15 @@ std::string convertFloatToString(double number)
 }
 
 void VulkanApplication::loadModels() {
-	const int num = 1;
-	const int numMeshesPerStride = 1;
+	const int num = 4;
+	const int numMeshesPerStride = 4;
 	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
 	for (int i = 0; i < num/numMeshesPerStride; i += numMeshesPerStride) {
 		const float x = static_cast<float>(rng.nextUInt(1));
 		const float y = static_cast<float>(rng.nextUInt(1));
 		const float z = static_cast<float>(rng.nextUInt(1));
-		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
 		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
@@ -54,15 +54,15 @@ void VulkanApplication::loadModels() {
 		//defaultScene[i+1] = { std::string("res/objects/breakfast_room/breakfast_room.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/cerberus_maximov/source/Cerberus_LP.FBX.fbx"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		//defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
-		//defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
-		//defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+			//glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
+		defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
+		defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
+		defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
+		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
@@ -481,6 +481,8 @@ void VulkanApplication::createPipelines() {
 	//post process pipelines
 	ndcTriangle = Mesh(contextInfo, MESHTYPE::NDCTRIANGLE);//ndc triangle for post processing
 	ndcBarrelMesh = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH);//ndc triangle for post processing
+	ndcBarrelMesh_PreCalc[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 0);
+	ndcBarrelMesh_PreCalc[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 1);
 	postProcessPipelines.resize(allShaders_PostProcessPipeline.size());
 	for (uint32_t i = 0; i < allShaders_PostProcessPipeline.size(); ++i) {
 		const uint32_t numImageSamplers = allShaders_PostProcessPipeline[i].second;
@@ -497,8 +499,21 @@ void VulkanApplication::createPipelines() {
 		postProcessPipelines[i].createInputDescriptors(contextInfo, postProcessPipelines[i-1].outputImages);
 	}
 	//create the static command buffers(no dynamic input for post processing)
+	std::vector<Mesh> ppMeshes; 
+	if (camera.vrmode) {
+		//ppMeshes.push_back(ndcBarrelMesh_PreCalc[0]);
+		//ppMeshes.push_back(ndcBarrelMesh_PreCalc[1]);
+		ppMeshes.push_back(ndcBarrelMesh);
+		ppMeshes.push_back(ndcBarrelMesh);
+//		ppMeshes.push_back(ndcTriangle);
+//		ppMeshes.push_back(ndcTriangle);
+	} else {
+		ppMeshes.push_back(ndcTriangle);
+	}
+
 	for (auto& pipeline : postProcessPipelines) {
-		pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ndcBarrelMesh, camera.vrmode);
+		//pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ndcBarrelMesh, camera.vrmode);
+		pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ppMeshes, camera.vrmode);
 	}
 
 

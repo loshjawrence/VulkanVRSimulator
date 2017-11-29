@@ -61,25 +61,23 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Po
 	////passthrough
 	//{{"src/shaders/ppPassthrough.vert.spv",
 	//"src/shaders/ppPassthrough.frag.spv"},
-	//1},
-	////Barrel/Aberration Fragment first version
-	//{{"src/shaders/ppPassthrough.vert.spv",
-	//"src/shaders/ppBarrelAbFrag.frag.spv"},
-	//1},
-	//Barrel/Aberration Fragment a lot are using this
+	//1}, //1 is num input sampler images to this pp stage
+	//Barrel/Aberration all in Fragment seems to be the common implementation ////perf: 4.44
 	{{"src/shaders/ppPassthrough.vert.spv",
 	"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
 	1},
-	////Barrel/Aberration Mesh
+	////Barrel/Aberration Mesh (no precalc, done in shaders)
+	//{{"src/shaders/ppBarrelAbMesh2.vert.spv",
+	//"src/shaders/ppBarrelAbMesh.frag.spv"},
+	//1},
+	////Barrel/Aberration Mesh (no precalc, done in shaders)
 	//{{"src/shaders/ppBarrelAbMesh.vert.spv",
 	//"src/shaders/ppBarrelAbMesh.frag.spv"},
 	//1},
-	////Barrel/Aberration PreCalc Mesh
-	//{{"src/shaders/ppBarrelAbPreCalcMesh.vert.spv",
-	//"src/shaders/ppBarrelAbPreCalcMesh.frag.spv"},
+	////Barrel/Aberration PreCalc Mesh //perf: 4.44
+	//{{"src/shaders/ppBarrelAbMeshPreCalc.vert.spv",
+	//"src/shaders/ppBarrelAbMeshPreCalc.frag.spv"},
 	//1},
-
-
 };
 //std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene;
 //const std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene =

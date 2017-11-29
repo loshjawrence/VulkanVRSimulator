@@ -172,8 +172,8 @@ void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rasterizer.depthClampEnable = VK_FALSE;
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
-	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
-	//rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
+	//rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
 	rasterizer.lineWidth = 1.0f;
 	//rasterizer.cullMode = VK_CULL_MODE_NONE;
 	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
@@ -427,8 +427,10 @@ void PostProcessPipeline::getViewportAndScissor(VkViewport& outViewport, VkRect2
 	}
 }
 
+//void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& contextInfo, 
+//	const VulkanRenderPass& renderPass, const Mesh& mesh, const bool vrmode) 
 void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& contextInfo, 
-	const VulkanRenderPass& renderPass, const Mesh& mesh, const bool vrmode) 
+	const VulkanRenderPass& renderPass, const std::vector<Mesh>& meshes, const bool vrmode) 
 {
 	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
 		VkCommandBufferAllocateInfo allocInfo = {};
@@ -471,11 +473,14 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 
 		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 
-		VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
-		VkBuffer indexBuffer = mesh.indexBuffer;
-		VkDeviceSize offsets[] = { 0 };
 
 		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &inputDescriptors[i].descriptorSet, 0, nullptr);
+
+		//VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
+		//VkBuffer indexBuffer = mesh.indexBuffer;
+		VkBuffer vertexBuffers[] = { meshes[0].vertexBuffer };
+		VkBuffer indexBuffer = meshes[0].indexBuffer;
+		VkDeviceSize offsets[] = { 0 };
 
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
@@ -489,20 +494,27 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 		vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
 		vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
 
-
-
-
-		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+		//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(meshes[0].mIndices.size()), 1, 0, 0, 0);
 
 		if (vrmode) {
+			//bind other precalc mesh(can't just use the same one since not the same(asymmetrical/mirrored)
 			const uint32_t camIndex = 1;
+			VkBuffer vertexBuffers[] = { meshes[camIndex].vertexBuffer };
+			VkBuffer indexBuffer = meshes[camIndex].indexBuffer;
+			VkDeviceSize offsets[] = { 0 };
+
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
 			const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(vrmode) };
 			vkCmdPushConstants(commandBuffers[i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 			getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
 			vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
 			vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
 
-			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+			//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(meshes[camIndex].mIndices.size()), 1, 0, 0, 0);
 		}
 
 		vkCmdEndRenderPass(commandBuffers[i]);

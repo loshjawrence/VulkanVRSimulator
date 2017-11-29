@@ -81,6 +81,7 @@ private:
 	std::vector<PostProcessPipeline> postProcessPipelines;
 	Mesh ndcTriangle;
 	Mesh ndcBarrelMesh;
+	Mesh ndcBarrelMesh_PreCalc[2];//0 left, 1 right
 
 	//used for fps tracker
 	double oldtime = 0.f;
