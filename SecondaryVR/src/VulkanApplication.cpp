@@ -44,15 +44,15 @@ std::string convertFloatToString(double number)
 }
 
 void VulkanApplication::loadModels() {
-	const int num = 1;
-	const int numMeshesPerStride = 1;
+	const int num = 4;
+	const int numMeshesPerStride = 4;
 	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
 	for (int i = 0; i < num/numMeshesPerStride; i += numMeshesPerStride) {
 		const float x = static_cast<float>(rng.nextUInt(1));
 		const float y = static_cast<float>(rng.nextUInt(1));
 		const float z = static_cast<float>(rng.nextUInt(1));
-		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
 		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
@@ -61,14 +61,14 @@ void VulkanApplication::loadModels() {
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/cerberus_maximov/source/Cerberus_LP.FBX.fbx"), 1,
 			//glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		//defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
-		//defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
-		//defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+		defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
+		defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
+		defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
+		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
@@ -85,7 +85,7 @@ void VulkanApplication::initVulkan() {
 	
 	//make a GLFW window
 	initWindow();
-	createRadialStencilMask();
+	//createRadialStencilMask();//no need to generate everytime
 
 	//context info holds vulkan things like instance, phys and logical device, swap chain info, depthImage, command pools and queues
 	contextInfo = VulkanContextInfo(window);
