@@ -157,7 +157,7 @@ void Mesh::createNDCBarrelMesh(const VulkanContextInfo& contextInfo, const uint3
 }
 
 
-void getSourceUV(const uint32_t camIndex, const glm::vec2& oTexCoord,
+void Mesh::getSourceUV(const uint32_t camIndex, const glm::vec2& oTexCoord,
 	glm::vec2& out_tcRed, glm::vec2& out_tcGreen, glm::vec2& out_tcBlue) {
 	//code from old oculus demo implementation
 	// Values that were scattered throughout the Oculus world demo
@@ -255,11 +255,11 @@ glm::vec3 distortInverse(glm::vec3 ndc, const uint32_t camIndex) {
 
     float r0 = 0.f;
     float r1 = 1.f;
-	getSourceUV(camIndex, convertRadToUV(normalized_ndc,r0,camIndex), tcRed, tcGreen, tcBlue);
+	Mesh::getSourceUV(camIndex, convertRadToUV(normalized_ndc,r0,camIndex), tcRed, tcGreen, tcBlue);
 	distort = convertUVToRad(tcGreen, camIndex);
 	float dr0 = radius - distort;
     while (abs(r1-r0) > 0.001) {//0.1mm seems theres a numerical instability when doing inverse of common approach
-		getSourceUV(camIndex, convertRadToUV(normalized_ndc, r1, camIndex), tcRed, tcGreen, tcBlue);
+		Mesh::getSourceUV(camIndex, convertRadToUV(normalized_ndc, r1, camIndex), tcRed, tcGreen, tcBlue);
 		distort = convertUVToRad(tcGreen, camIndex);
         float dr1 = radius - distort;
         float r2 = r1 - dr1 * ((r1 - r0) / (dr1 - dr0));

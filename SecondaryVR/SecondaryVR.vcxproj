@@ -75,6 +75,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(SolutionDir)SecondaryVR\dependencies\tinyobjloader-master;$(SolutionDir)SecondaryVR\dependencies\stb-master;$(SolutionDir)SecondaryVR\dependencies\glm;$(SolutionDir)SecondaryVR\dependencies\GLFW\include;$(SolutionDir)SecondaryVR\dependencies\assimp\include;$(SolutionDir)SecondaryVR\src;C:\VulkanSDK\1.0.65.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(SolutionDir)SecondaryVR\dependencies\GLFW\lib-vc2015;$(SolutionDir)SecondaryVR\dependencies\assimp\lib\x86;C:\VulkanSDK\1.0.65.0\Lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -105,6 +106,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(SolutionDir)SecondaryVR\dependencies\tinyobjloader-master;$(SolutionDir)SecondaryVR\dependencies\stb-master;$(SolutionDir)SecondaryVR\dependencies\glm;$(SolutionDir)SecondaryVR\dependencies\GLFW\include;$(SolutionDir)SecondaryVR\dependencies\assimp\include;$(SolutionDir)SecondaryVR\src;C:\VulkanSDK\1.0.65.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>

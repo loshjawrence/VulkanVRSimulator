@@ -1,6 +1,6 @@
 #pragma once
 #include "VulkanApplication.h"
-
+//#define _CRT_SECURE_NO_WARNINGS 1 
 #ifndef GLFW_INCLUDE_VULKAN
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
@@ -11,6 +11,12 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 #endif
+
+#ifndef STB_IMAGE_WRITE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+#endif
+
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
@@ -79,10 +85,12 @@ void VulkanApplication::initVulkan() {
 	
 	//make a GLFW window
 	initWindow();
+	createRadialStencilMask();
 
 	//context info holds vulkan things like instance, phys and logical device, swap chain info, depthImage, command pools and queues
 	contextInfo = VulkanContextInfo(window);
 	VulkanApplication::setupDebugCallback();
+
 	
 	//describes input and output attachments and how subpasses relate to one another
 	allRenderPasses = VulkanRenderPass(contextInfo);
@@ -92,6 +100,13 @@ void VulkanApplication::initVulkan() {
 
 	//contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPass);
 	contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPassPostProcessPresent);
+
+	//defualtMesh
+	ndcTriangle = Mesh(contextInfo, MESHTYPE::NDCTRIANGLE);//ndc triangle for post processing
+	ndcBarrelMesh[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 0);
+	ndcBarrelMesh[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 1);
+	ndcBarrelMesh_PreCalc[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 0);
+	ndcBarrelMesh_PreCalc[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 1);
 
 	//setup all pipelines
 	createPipelines();
@@ -484,6 +499,7 @@ void VulkanApplication::createPipelines() {
 	//forwardPipelines
 	forwardPipelines.resize(allShaders_ForwardPipeline.size());
 	textureMapFlagsToForwardPipelineIndex.resize(allShaders_ForwardPipeline.size());
+
 	for (uint32_t i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
 		int numImageSamplers = 0;
 		for (int k = 1; k < VulkanDescriptor::MAX_IMAGESAMPLERS + 1; ++k) //the first bit is for HAS_NONE so we need to ignore that one
@@ -495,11 +511,6 @@ void VulkanApplication::createPipelines() {
 	}
 
 	//post process pipelines
-	ndcTriangle = Mesh(contextInfo, MESHTYPE::NDCTRIANGLE);//ndc triangle for post processing
-	ndcBarrelMesh[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 0);
-	ndcBarrelMesh[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 1);
-	ndcBarrelMesh_PreCalc[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 0);
-	ndcBarrelMesh_PreCalc[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 1);
 	postProcessPipelines.resize(allShaders_PostProcessPipeline.size());
 	for (uint32_t i = 0; i < allShaders_PostProcessPipeline.size(); ++i) {
 		const uint32_t numImageSamplers = allShaders_PostProcessPipeline[i].second;
@@ -510,11 +521,13 @@ void VulkanApplication::createPipelines() {
 			allRenderPasses, contextInfo, &(VulkanDescriptor::postProcessLayoutTypes[numImageSamplers-1]));
 	}
 
+	//each pp needs inputdescriptor set ofprevious stage
 	initForwardPipelinesVulkanImagesAndFramebuffers();
 	postProcessPipelines[0].createInputDescriptors(contextInfo, forwardPipelinesVulkanImages);
 	for (int i = 1; i < postProcessPipelines.size(); ++i) {
 		postProcessPipelines[i].createInputDescriptors(contextInfo, postProcessPipelines[i-1].outputImages);
 	}
+
 	//create the static command buffers(no dynamic input for post processing)
 	std::vector<Mesh> ppMeshes; 
 	if (contextInfo.camera.vrmode) {
@@ -652,8 +665,6 @@ void VulkanApplication::recreateSwapChain() {
 	allocateGlobalCommandBuffers();
 
 	createPipelines();
-
-
 }
 
 
@@ -772,3 +783,88 @@ void VulkanApplication::GLFW_ScrollCallback(GLFWwindow* window, double xoffset, 
 	app->contextInfo.camera.processScrollAndUpdateView(yoffset);
 }
 
+void VulkanApplication::createRadialStencilMask() {
+	const float vrScaleXback = contextInfo.camera.vrmode ? 2.f : 1.f;
+	const float width = vrScaleXback * contextInfo.camera.width;
+	const float height = contextInfo.camera.height;
+	const float invWidth = 1.f / width;
+	const float invHeight = 1.f / height;
+	const float vrMode = 1.f;
+	const float middleRegionRadius = 0.52;//roughly 0.52
+	const float NDCcenterOffset = 0.15;//0.15 ndc centeer UV center offset 0.0375
+	const std::vector<glm::vec2> ndcCenter = { glm::vec2( NDCcenterOffset, 0.f), 
+											   glm::vec2(-NDCcenterOffset, 0.f) };
+	std::vector<std::vector<uint32_t>>radialDensityMask(3);
+	radialDensityMask[0].resize(width*height);
+	radialDensityMask[1].resize(width*height);
+	radialDensityMask[2].resize(width*height);
+
+	//go through all 2x2 set of pixels (center of group) and determine if that point samples outside of
+	//the UV space for that eye, if so mark as 0 (z-near in vulkan). make a once that is blank for non vr mode?
+	const uint32_t stencilMaskVal = 1;
+	for (int camIndex = 0; camIndex <= 1; ++camIndex) {
+		
+		//x,y correspond to pixel number where 0,0 is upper left in vulkan
+		//loop over entire render area for each eye, if outside of r=1.15 or render area set to stencilMask(need to XOR later to get middle cutout)
+		for (int y = 1; y < height; y+=2) {
+			for (int x = 1; x < width; x+=2) {
+				//if (x == 881 && y == 601 && camIndex == 1) {
+				if (x == 1367 && y == 1 && camIndex == 1) {
+					int adinvow = 1;
+				}
+				//convert to uv
+				glm::vec2 uv(x*invWidth, y*invHeight);
+
+				//convert this uv to ndc based on camIndex
+				const glm::vec2 equivNDC = glm::vec2((uv.x - 0.5*camIndex)*4.f - 1.f, uv.y*2.f - 1.f);
+				const float radius = glm::length(equivNDC - ndcCenter[camIndex]);
+
+				if (radius < (1.f + NDCcenterOffset)) {
+					if (radius > middleRegionRadius) {//middle region checkerboard 2x2
+						if ( (((x - 1) & 0x3) == 0) && (((y - 1) & 0x3) == 0) ) {//both divis by 4
+							//set group of 4 to stencilMask. uv as it is resolves to lower right pixel
+							radialDensityMask[camIndex][(y  )*width + x  ] = stencilMaskVal;//lowerright
+							radialDensityMask[camIndex][(y-1)*width + x  ] = stencilMaskVal;//upperright
+							radialDensityMask[camIndex][(y-1)*width + x-1] = stencilMaskVal;//upperleft
+							radialDensityMask[camIndex][(y  )*width + x-1] = stencilMaskVal;//lowerleft
+						}
+					} else { //center region
+						//set group of 4 to stencilMask. uv as it is resolves to lower right pixel
+						radialDensityMask[camIndex][(y  )*width + x  ] = stencilMaskVal;//lowerright
+						radialDensityMask[camIndex][(y-1)*width + x  ] = stencilMaskVal;//upperright
+						radialDensityMask[camIndex][(y-1)*width + x-1] = stencilMaskVal;//upperleft
+						radialDensityMask[camIndex][(y  )*width + x-1] = stencilMaskVal;//lowerleft
+					}
+				} 
+
+			}//x pixel ID
+		}//y pixel ID
+	}//camIndex
+
+	//XOR values to get result
+	for (int y = 0; y <height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			const int stencilIndex = (y*width + x);
+			uint32_t xorResult = radialDensityMask[0][stencilIndex] ^ radialDensityMask[1][stencilIndex];
+			radialDensityMask[2][stencilIndex] = xorResult;
+		}
+	}
+
+	//stb write to an image to check it out
+	const int NUM_CHANNELS = 3;
+	uint8_t* rgb_image = (uint8_t*)malloc(width * height * NUM_CHANNELS);
+	for (int y = 0; y < height; ++y) {
+		for (int x = 0; x < width; ++x) {
+			const int stencilIndex = (y*width + x);
+			const int redindex = NUM_CHANNELS * stencilIndex;
+			const uint8_t colorVal = 255 * radialDensityMask[2][stencilIndex];
+			rgb_image[redindex + 0] = colorVal;
+			rgb_image[redindex + 1] = colorVal;
+			rgb_image[redindex + 2] = colorVal;
+		}
+	}
+	std::string fileloc("radialStencleMask.bmp");
+	std::cout << "\nWriting radialStencilMask image to "<< fileloc;
+	stbi_write_bmp(fileloc.c_str(), width, height, NUM_CHANNELS, rgb_image);
+	stbi_image_free(rgb_image);
+}

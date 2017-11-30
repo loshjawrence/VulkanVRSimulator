@@ -63,7 +63,7 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Po
 	//{{"src/shaders/ppPassthrough.vert.spv",
 	//"src/shaders/ppPassthrough.frag.spv"},
 	//1}, //1 is num input sampler images to this pp stage
-	//Barrel/Aberration all in Fragment seems to be the common implementation ////perf: 4.44
+//	Barrel/Aberration all in Fragment seems to be the common implementation ////perf: 4.44
 	{{"src/shaders/ppPassthrough.vert.spv",
 	"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
 	1},

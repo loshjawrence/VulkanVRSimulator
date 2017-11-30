@@ -52,11 +52,11 @@ const float Distortion_Scale =
 // This samples from a single unwarped [0,0]x[1,1] box containing two views
 // side-by-side that have been rendered using normal perspective projection.
 // The left eye takes up [0,0]x[0.5,1] and the right eye takes up [0.5,0]x[1,1].
-vec4 sampleChroma(vec2 point, vec2 ScreenCenter) {
-  if (clamp(point, ScreenCenter - vec2(0.25, 0.5), ScreenCenter + vec2(0.25, 0.5)) != point) return vec4(0.0);
-  vec2 checkerboard = fract(point * vec2(4.0, 2.0)) - 0.5;
-  return vec4(checkerboard.x * checkerboard.y < 0.0 ? 0.25 : 1.0);
-}
+//vec4 sampleChroma(vec2 point, vec2 ScreenCenter) {
+//  if (clamp(point, ScreenCenter - vec2(0.25, 0.5), ScreenCenter + vec2(0.25, 0.5)) != point) return vec4(0.0);
+//  vec2 checkerboard = fract(point * vec2(4.0, 2.0)) - 0.5;
+//  return vec4(checkerboard.x * checkerboard.y < 0.0 ? 0.25 : 1.0);
+//}
 
 
 void main() {	
@@ -68,8 +68,10 @@ void main() {
     //if vrMode, shrink UV.x by half and shift
     //to sample one eye of the original full screen texture
     //mapping UV(0-1) to either 0-.5 or .5-1 based on camIndex
+    //NOTE: THIS PROB NEEDS TO BE ndc converted and shifted, 
+    //or take this oTexCoord(already converted and shifted for vr) as tcGreen and find the rest
     vec2 oTexCoord = fragUV;
-    oTexCoord.x = (oTexCoord.x * (1.f - 0.5*vrMode)) + 0.5f*camIndex;
+//    oTexCoord.x = (oTexCoord.x * (1.f - 0.5*vrMode)) + 0.5f*camIndex;
 
     // Compute the viewport size
     bool isRight = oTexCoord.x > 0.5;

@@ -98,7 +98,7 @@ private:
 	VkSemaphore forwardRenderFinishedSemaphore;
 
 private:
-
+	void createRadialStencilMask();
 	void initWindow();
 	void initVulkan();
 	void mainLoop();

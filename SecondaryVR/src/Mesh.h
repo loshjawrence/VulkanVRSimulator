@@ -56,6 +56,9 @@ public:
 	void createNDCBarrelMesh(const VulkanContextInfo& contextInfo, const uint32_t camIndex);
 	void createNDCBarrelMeshPreCalc(const VulkanContextInfo& contextInfo, const uint32_t camIndex);
 
+	static void getSourceUV(const uint32_t camIndex, const glm::vec2& oTexCoord,
+		glm::vec2& out_tcRed, glm::vec2& out_tcGreen, glm::vec2& out_tcBlue);
+
 private:
 	void genGridMesh(const VulkanContextInfo& contextInfo, const uint32_t camIndex, const uint32_t shift);
 	void setupVulkanBuffers(const VulkanContextInfo& contextInfo);
