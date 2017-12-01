@@ -159,9 +159,9 @@ void Mesh::createNDCBarrelMesh(const VulkanContextInfo& contextInfo, const uint3
 
 void Mesh::getSourceUV(const uint32_t camIndex, const glm::vec2& oTexCoord,
 	glm::vec2& out_tcRed, glm::vec2& out_tcGreen, glm::vec2& out_tcBlue) {
-	//code from old oculus demo implementation
-	// Values that were scattered throughout the Oculus world demo
 
+	//modified code sample from old oculus demo implementation
+	// Values that were scattered throughout the Oculus world demo
 	const glm::vec4 HmdWarpParam = glm::vec4(1.0f, 0.22f, 0.24f, 0.0f); // For the 7-inch device
 	const glm::vec4 ChromAbParam = glm::vec4(0.996f, -0.004f, 1.014f, 0.f);
 	const float HMD_HResolution = 1280.0;
@@ -247,6 +247,7 @@ float convertUVToRad(const glm::vec2 uv, const uint32_t camIndex) {
 glm::vec3 distortInverse(glm::vec3 ndc, const uint32_t camIndex) {
     // Uses Secant method for finding inverse of function
     //based on eulers method for approx. inverse of function i.e. given y find x
+	//modified code sample from webvr
 	glm::vec2 tcRed, tcGreen, tcBlue;
 	glm::vec2 normalized_ndc = glm::normalize(glm::vec2(ndc.x, ndc.y));
     float radius = glm::length(glm::vec2(ndc.x, ndc.y));
@@ -290,14 +291,18 @@ void Mesh::createNDCBarrelMeshPreCalc(const VulkanContextInfo& contextInfo, cons
 				int asdfienv = 1;
 			}
 			Vertex& v = mVertices[y*(quadsPerDim + 1) + x];
-			glm::vec2 oTexCoord = v.uv;//0-1
+			//glm::vec2 oTexCoord = v.uv;//0-1
 
 			//for vrMode, shrink UV.x by half and shift //to sample one eye of the original full screen texture
 			//mapping UV(0-1) to either 0-.5 or .5-1 based on camIndex
-			oTexCoord.x = (oTexCoord.x * (1.f - 0.5f*vrMode)) + 0.5f*camIndex;
+			//oTexCoord.x = (oTexCoord.x * (1.f - 0.5f*vrMode)) + 0.5f*camIndex;
 
 			//warp the ndc positions down using secant method for finding inverse of function
 			v.pos = distortInverse(v.pos, camIndex);
+
+			//to avoid secant method root finding issues re-convert v.pos to its corresponding undistorted UV for the eye
+			glm::vec2 oTexCoord(((v.pos.x + 1.f)*0.25) + 0.5*camIndex, (v.pos.y + 1.f) * 0.5f);
+
 
 			//passIn uv(that is for left or right eye determined by camIndex
 			//get source uv for each channel

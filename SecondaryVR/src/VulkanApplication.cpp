@@ -540,10 +540,10 @@ void VulkanApplication::createPipelines() {
 	//create the static command buffers(no dynamic input for post processing)
 	std::vector<Mesh> ppMeshes; 
 	if (contextInfo.camera.vrmode) {
-		//ppMeshes.push_back(ndcBarrelMesh_PreCalc[0]);
-		//ppMeshes.push_back(ndcBarrelMesh_PreCalc[1]);
-		ppMeshes.push_back(ndcBarrelMesh[0]);
-		ppMeshes.push_back(ndcBarrelMesh[1]);
+		ppMeshes.push_back(ndcBarrelMesh_PreCalc[0]);
+		ppMeshes.push_back(ndcBarrelMesh_PreCalc[1]);
+		//ppMeshes.push_back(ndcBarrelMesh[0]);
+		//ppMeshes.push_back(ndcBarrelMesh[1]);
 		//ppMeshes.push_back(ndcTriangle);
 		//ppMeshes.push_back(ndcTriangle);
 	} else {

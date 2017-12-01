@@ -87,17 +87,17 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Po
 	//"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
 	//1},
 	//Barrel/Aberration Mesh (no precalc, done in shaders)
-	{{"src/shaders/ppBarrelAbMesh2.vert.spv",
-	"src/shaders/ppBarrelAbMesh.frag.spv"},
-	1},
+	//{{"src/shaders/ppBarrelAbMesh2.vert.spv",
+	//"src/shaders/ppBarrelAbMesh.frag.spv"},
+	//1},
 	//Barrel/Aberration Mesh (no precalc, done in shaders)
 	//{{"src/shaders/ppBarrelAbMesh.vert.spv",
 	//"src/shaders/ppBarrelAbMesh.frag.spv"},
 	//1},
 	//Barrel/Aberration PreCalc Mesh //perf: 4.44
-	//{{"src/shaders/ppBarrelAbMeshPreCalc.vert.spv",
-	//"src/shaders/ppBarrelAbMeshPreCalc.frag.spv"},
-	//1},
+	{{"src/shaders/ppBarrelAbMeshPreCalc.vert.spv",
+	"src/shaders/ppBarrelAbMeshPreCalc.frag.spv"},
+	1},
 };
 //std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene;
 //const std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene =
