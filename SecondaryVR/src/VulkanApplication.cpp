@@ -551,7 +551,6 @@ void VulkanApplication::createPipelines() {
 	}
 
 	for (auto& pipeline : postProcessPipelines) {
-		//pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ndcBarrelMesh, contextInfo.camera.vrmode);
 		pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ppMeshes, contextInfo.camera.vrmode);
 	}
 

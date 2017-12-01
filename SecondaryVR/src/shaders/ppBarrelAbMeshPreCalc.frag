@@ -24,9 +24,10 @@ void main() {
 
     const vec2 tcRed    = fragColor.xy;
     const vec2 tcGreen  = fragUV;
-    const vec2 tcBlue   = fragTan.xy;
+    const vec2 tcBlue   = fragNor.xy;
 
     if(1 == vrMode) {
+//        outColor = texture(texSampler, tcRed);
         outColor = vec4(texture(texSampler, tcRed).r,
                         texture(texSampler, tcGreen).g,
                         texture(texSampler, tcBlue).b, 1.f);
