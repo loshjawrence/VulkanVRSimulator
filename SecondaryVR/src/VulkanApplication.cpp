@@ -61,13 +61,13 @@ void VulkanApplication::loadModels() {
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/cerberus_maximov/source/Cerberus_LP.FBX.fbx"), 1,
 			//glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+		//defaultScene[i+1] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
 		//defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
-		//defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
+		//defaultScene[i] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };

@@ -81,7 +81,7 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Po
 {
 	////passthrough
 	{{"src/shaders/ppPassthrough.vert.spv",
-	"src/shaders/ppPassthrough.frag.spv"},
+	"src/shaders/ppStencilHoleFill.frag.spv"},
 	1}, //1 is num input sampler images to this pp stage
 	//passthrough
 	{{"src/shaders/ppPassthrough.vert.spv",
