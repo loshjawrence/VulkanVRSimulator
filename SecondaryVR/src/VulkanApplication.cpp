@@ -44,15 +44,15 @@ std::string convertFloatToString(double number)
 }
 
 void VulkanApplication::loadModels() {
-	const int num = 1;
-	const int numMeshesPerStride = 1;
+	const int num = 4;
+	const int numMeshesPerStride = 4;
 	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
 	for (int i = 0; i < num/numMeshesPerStride; i += numMeshesPerStride) {
 		const float x = static_cast<float>(rng.nextUInt(1));
 		const float y = static_cast<float>(rng.nextUInt(1));
 		const float z = static_cast<float>(rng.nextUInt(1));
-		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
 		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
@@ -61,14 +61,14 @@ void VulkanApplication::loadModels() {
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/cerberus_maximov/source/Cerberus_LP.FBX.fbx"), 1,
 			//glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		//defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
-		//defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
-		//defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+		defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
+		defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
+		defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
+		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
@@ -801,7 +801,8 @@ void VulkanApplication::createRadialStencilMask() {
 	const float invHeight = 1.f / height;
 	const float vrMode = 1.f;
 	const float middleRegionRadius = 0.52;//roughly 0.52
-	const float NDCcenterOffset = 0.15;//0.15 ndc centeer UV center offset 0.0375
+	const float NDCcenterOffset = 0.1425;//0.15 ndc centeer UV center offset 0.0375
+	const float extraRadius = NDCcenterOffset*0.5f;//same as NDCcenterOffset?
 	const std::vector<glm::vec2> ndcCenter = { glm::vec2( NDCcenterOffset, 0.f), 
 											   glm::vec2(-NDCcenterOffset, 0.f) };
 	std::vector<std::vector<uint8_t>>radialDensityMask(3);
@@ -827,13 +828,16 @@ void VulkanApplication::createRadialStencilMask() {
 				glm::vec2 uv(x*invWidth, y*invHeight);
 
 				//convert this uv to ndc based on camIndex
-				const glm::vec2 equivNDC = glm::vec2((uv.x - 0.5*camIndex)*4.f - 1.f, uv.y*2.f - 1.f);
-				const float radius = glm::length(equivNDC - ndcCenter[camIndex]);
+				glm::vec2 equivNDC = glm::vec2((uv.x - 0.5*camIndex)*4.f - 1.f, uv.y*2.f - 1.f);
+				equivNDC *= glm::vec2(1.f , height/(width*0.5f));//normalize y ndc against half width (eye viewport size) so we get circles and not long vertical ellipses if Y is greater than vr eye viewport x (width/2)
+				float radius = glm::length(equivNDC - ndcCenter[camIndex]);
 
-				if (radius < (1.f + NDCcenterOffset)) {
+
+
+				if (radius < (1.f + extraRadius)) {
 					if (radius > middleRegionRadius) {//middle region checkerboard 2x2
 						if ( (((x - 1) & 0x3) == 0) && (((y - 1) & 0x3) == 0) //both divis by 4
-					      || (((x - 3) & 0x3) == 0) && (((y - 3) & 0x3) == 0) ) { //shift the above patter right and down to get checker
+					      || (((x - 3) & 0x3) == 0) && (((y - 3) & 0x3) == 0) ) { //shift the above pattern right and down to get checker
 							//set group of 4 to stencilMask. uv as it is resolves to lower right pixel
 							radialDensityMask[camIndex][(y  )*width + x  ] = stencilMaskVal;//lowerright
 							radialDensityMask[camIndex][(y-1)*width + x  ] = stencilMaskVal;//upperright
