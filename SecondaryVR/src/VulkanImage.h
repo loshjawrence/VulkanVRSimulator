@@ -38,16 +38,20 @@ public:
 	void createColorAttachmentImage(const VulkanContextInfo& contextInfo);
 	void createDepthImage(const VulkanContextInfo& contextInfo);
 	void createTextureImage(const VulkanContextInfo& contextInfo);
+	void createDepthImageWithImportedStaticStencilMask(const VulkanContextInfo& contextInfo);
 	void createImage(const VulkanContextInfo& contextInfo);
 	void createImageView(const VulkanContextInfo& contextInfo);
 	void transitionImageLayout(const VulkanContextInfo& contextInfo,
-		const VkImageLayout oldLayout, const VkImageLayout newLayout);
+		const VkImageLayout oldLayout, const VkImageLayout newLayout, bool fillStencil = false);
 	void createImageSampler(const VulkanContextInfo& contextInfo);
 
 	static VkImageView createImageView(const VkImage& image, const VkFormat& format,
 		const VkImageAspectFlags& aspectFlags, const VkDevice& device);
 
 
+	//helper
+	void covertToSingleByte(uint8_t* stencilBytes, const uint8_t* pixels,
+		const int width, const int height, const int channelsInPixels);
 
 	//cleanup
 	void destroyVulkanImage(const VulkanContextInfo& contextInfo);

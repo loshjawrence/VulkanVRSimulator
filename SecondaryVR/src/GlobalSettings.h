@@ -12,6 +12,10 @@
 
 const float startingWidth = 1280;
 const float startingHeight = 800;
+//const float startingWidth = 320;
+//const float startingHeight = 200;
+//const float startingWidth = 640;
+//const float startingHeight = 400;
 const uint32_t HAS_NONE		= 1 << 0; 
 const uint32_t HAS_DIFFUSE	= 1 << 1; 
 const uint32_t HAS_NOR		= 1 << 2; 
@@ -64,17 +68,17 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Po
 	//"src/shaders/ppPassthrough.frag.spv"},
 	//1}, //1 is num input sampler images to this pp stage
 //	Barrel/Aberration all in Fragment seems to be the common implementation ////perf: 4.44
-	{{"src/shaders/ppPassthrough.vert.spv",
-	"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
-	1},
+	//{{"src/shaders/ppPassthrough.vert.spv",
+	//"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
+	//1},
 	////Barrel/Aberration Mesh (no precalc, done in shaders)
 	//{{"src/shaders/ppBarrelAbMesh2.vert.spv",
 	//"src/shaders/ppBarrelAbMesh.frag.spv"},
 	//1},
 	////Barrel/Aberration Mesh (no precalc, done in shaders)
-	//{{"src/shaders/ppBarrelAbMesh.vert.spv",
-	//"src/shaders/ppBarrelAbMesh.frag.spv"},
-	//1},
+	{{"src/shaders/ppBarrelAbMesh.vert.spv",
+	"src/shaders/ppBarrelAbMesh.frag.spv"},
+	1},
 	//Barrel/Aberration PreCalc Mesh //perf: 4.44
 	//{{"src/shaders/ppBarrelAbMeshPreCalc.vert.spv",
 	//"src/shaders/ppBarrelAbMeshPreCalc.frag.spv"},

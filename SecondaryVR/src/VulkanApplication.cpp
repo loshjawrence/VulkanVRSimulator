@@ -44,15 +44,15 @@ std::string convertFloatToString(double number)
 }
 
 void VulkanApplication::loadModels() {
-	const int num = 4;
-	const int numMeshesPerStride = 4;
+	const int num = 1;
+	const int numMeshesPerStride = 1;
 	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
 	for (int i = 0; i < num/numMeshesPerStride; i += numMeshesPerStride) {
 		const float x = static_cast<float>(rng.nextUInt(1));
 		const float y = static_cast<float>(rng.nextUInt(1));
 		const float z = static_cast<float>(rng.nextUInt(1));
-		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
 		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
@@ -61,14 +61,14 @@ void VulkanApplication::loadModels() {
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/cerberus_maximov/source/Cerberus_LP.FBX.fbx"), 1,
 			//glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
-		defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
-		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
+		//defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
+		//defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
+		//defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
@@ -88,7 +88,7 @@ void VulkanApplication::initVulkan() {
 	//createRadialStencilMask();//no need to generate everytime
 
 	//context info holds vulkan things like instance, phys and logical device, swap chain info, depthImage, command pools and queues
-	contextInfo = VulkanContextInfo(window);
+	contextInfo = VulkanContextInfo(window,std::string("radialStencilMask.bmp"));
 	VulkanApplication::setupDebugCallback();
 
 	
@@ -101,7 +101,7 @@ void VulkanApplication::initVulkan() {
 	//contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPass);
 	contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPassPostProcessPresent);
 
-	//defualtMesh
+	//defualtMeshes
 	ndcTriangle = Mesh(contextInfo, MESHTYPE::NDCTRIANGLE);//ndc triangle for post processing
 	ndcBarrelMesh[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 0);
 	ndcBarrelMesh[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 1);
@@ -294,7 +294,8 @@ void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& in
 
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	clearValues[1].depthStencil = { 1.0f, 0 };
+	clearValues[1].depthStencil = { 1.0f, 1 };
+	//clearValues[1].depthStencil = { 1.0f };
 
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
@@ -327,7 +328,8 @@ void VulkanApplication::beginRecordingPrimary(const uint32_t imageIndex) {
 
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	clearValues[1].depthStencil = { 1.0f, 0 };
+	//clearValues[1].depthStencil = { 1.f, 1 };
+	clearValues[1].depthStencil = { 1.f };
 
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
@@ -794,7 +796,7 @@ void VulkanApplication::createRadialStencilMask() {
 	const float NDCcenterOffset = 0.15;//0.15 ndc centeer UV center offset 0.0375
 	const std::vector<glm::vec2> ndcCenter = { glm::vec2( NDCcenterOffset, 0.f), 
 											   glm::vec2(-NDCcenterOffset, 0.f) };
-	std::vector<std::vector<uint32_t>>radialDensityMask(3);
+	std::vector<std::vector<uint8_t>>radialDensityMask(3);
 	radialDensityMask[0].resize(width*height);
 	radialDensityMask[1].resize(width*height);
 	radialDensityMask[2].resize(width*height);
@@ -809,9 +811,10 @@ void VulkanApplication::createRadialStencilMask() {
 		for (int y = 1; y < height; y+=2) {
 			for (int x = 1; x < width; x+=2) {
 				//if (x == 881 && y == 601 && camIndex == 1) {
-				if (x == 1367 && y == 1 && camIndex == 1) {
-					int adinvow = 1;
-				}
+				//if (x == 1367 && y == 1 && camIndex == 1) {
+				//	int adinvow = 1;
+				//}
+
 				//convert to uv
 				glm::vec2 uv(x*invWidth, y*invHeight);
 
@@ -821,7 +824,8 @@ void VulkanApplication::createRadialStencilMask() {
 
 				if (radius < (1.f + NDCcenterOffset)) {
 					if (radius > middleRegionRadius) {//middle region checkerboard 2x2
-						if ( (((x - 1) & 0x3) == 0) && (((y - 1) & 0x3) == 0) ) {//both divis by 4
+						if ( (((x - 1) & 0x3) == 0) && (((y - 1) & 0x3) == 0) //both divis by 4
+					      || (((x - 3) & 0x3) == 0) && (((y - 3) & 0x3) == 0) ) { //shift the above patter right and down to get checker
 							//set group of 4 to stencilMask. uv as it is resolves to lower right pixel
 							radialDensityMask[camIndex][(y  )*width + x  ] = stencilMaskVal;//lowerright
 							radialDensityMask[camIndex][(y-1)*width + x  ] = stencilMaskVal;//upperright
@@ -846,12 +850,13 @@ void VulkanApplication::createRadialStencilMask() {
 		for (int x = 0; x < width; ++x) {
 			const int stencilIndex = (y*width + x);
 			uint32_t xorResult = radialDensityMask[0][stencilIndex] ^ radialDensityMask[1][stencilIndex];
+			//radialDensityMask[2][stencilIndex] = radialDensityMask[0][stencilIndex];
 			radialDensityMask[2][stencilIndex] = xorResult;
 		}
 	}
 
 	//stb write to an image to check it out
-	const int NUM_CHANNELS = 3;
+	const int NUM_CHANNELS = 4;
 	uint8_t* rgb_image = (uint8_t*)malloc(width * height * NUM_CHANNELS);
 	for (int y = 0; y < height; ++y) {
 		for (int x = 0; x < width; ++x) {
@@ -861,9 +866,11 @@ void VulkanApplication::createRadialStencilMask() {
 			rgb_image[redindex + 0] = colorVal;
 			rgb_image[redindex + 1] = colorVal;
 			rgb_image[redindex + 2] = colorVal;
+			rgb_image[redindex + 3] = 255;
+
 		}
 	}
-	std::string fileloc("radialStencleMask.bmp");
+	std::string fileloc("radialStencilMask.bmp");
 	std::cout << "\nWriting radialStencilMask image to "<< fileloc;
 	stbi_write_bmp(fileloc.c_str(), width, height, NUM_CHANNELS, rgb_image);
 	stbi_image_free(rgb_image);

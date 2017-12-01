@@ -68,7 +68,7 @@ public:
 
 	//TODO: make some of these private
 	VulkanContextInfo();
-	VulkanContextInfo(GLFWwindow* window);
+	VulkanContextInfo(GLFWwindow* window, std::string& stencil = std::string(""));
 	~VulkanContextInfo();
 
 	//surface
@@ -89,6 +89,7 @@ public:
 	
 	//depthstencil format determination
 	void createDepthImage();
+	std::string stencilpath;
 	void determineDepthFormat();
 	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, 
 		const VkImageTiling tiling, const VkFormatFeatureFlags features) const;

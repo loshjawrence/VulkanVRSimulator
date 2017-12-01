@@ -26,7 +26,7 @@ public:
 	//DK1 full
 	//float width = 1280;
 	//float height = 800;
-	//DK1 1.4x
+	//DK1 virtual 1.4x(barrel will shrink to down)
 	float width = startingWidth*virtualRenderTargetScaling;
 	float height = startingHeight*virtualRenderTargetScaling;
 	//HALF modern

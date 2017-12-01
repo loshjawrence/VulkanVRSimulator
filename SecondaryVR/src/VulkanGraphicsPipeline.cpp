@@ -126,7 +126,19 @@ void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& rend
 	depthStencil.depthWriteEnable = VK_TRUE;
 	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
 	depthStencil.depthBoundsTestEnable = VK_FALSE;
-	depthStencil.stencilTestEnable = VK_FALSE;
+	//depthStencil.stencilTestEnable = VK_FALSE;
+	//NEW
+	depthStencil.stencilTestEnable = VK_TRUE;
+	VkStencilOpState stencilOpState = {}; uint32_t mask = 0x1;
+	stencilOpState.compareMask = mask;//AND'd with reference val to get final compare val to test against stencil val
+	stencilOpState.reference = mask;
+	stencilOpState.writeMask = mask;
+	stencilOpState.compareOp = VK_COMPARE_OP_EQUAL; 
+	//what to do with stored stencil val in these events
+	stencilOpState.depthFailOp = VK_STENCIL_OP_KEEP;// frag fails depth
+	stencilOpState.failOp = VK_STENCIL_OP_KEEP;//stencil fails ref
+	stencilOpState.passOp = VK_STENCIL_OP_KEEP;//stencil passes ref
+	depthStencil.front = stencilOpState;
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;

@@ -113,14 +113,15 @@ namespace {//prevents mulitple defined compiler complaints
         vkBindBufferMemory(contextInfo.device, buffer, bufferMemory, 0);
     }
 
-    void copyBufferToImage(const VulkanContextInfo& contextInfo, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+    void copyBufferToImage(const VulkanContextInfo& contextInfo, VkBuffer buffer, VkImage image,
+		uint32_t width, uint32_t height, const VkImageAspectFlags& aspectFlags) {
 		VkCommandBuffer commandBuffer = beginSingleTimeCommands(contextInfo);
 
         VkBufferImageCopy region = {};
         region.bufferOffset = 0;
         region.bufferRowLength = 0;
         region.bufferImageHeight = 0;
-        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.aspectMask = aspectFlags;
         region.imageSubresource.mipLevel = 0;
         region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount = 1;

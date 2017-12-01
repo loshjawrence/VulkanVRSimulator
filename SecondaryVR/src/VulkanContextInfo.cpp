@@ -13,7 +13,9 @@
 VulkanContextInfo::VulkanContextInfo() {
 
 }
-VulkanContextInfo::VulkanContextInfo(GLFWwindow* window) {
+VulkanContextInfo::VulkanContextInfo(GLFWwindow* window, std::string& stencilpath)
+	: stencilpath(stencilpath)
+{
 	createInstance();
 	createSurface(window);
 	pickPhysicalDevice();
@@ -228,6 +230,27 @@ void VulkanContextInfo::acquireDeviceQueues() {
 	vkGetDeviceQueue(device, presentFamily, 0, &presentQueue);
 }
 
+
+void VulkanContextInfo::createDepthImage() {
+	determineDepthFormat();
+	//depthImage = VulkanImage(IMAGETYPE::DEPTH, swapChainExtent, depthFormat, *this);
+	VkExtent2D renderTargetExtent;
+	float vrScaleXback = camera.vrmode ? 2.f : 1.f;
+	renderTargetExtent.width = vrScaleXback * static_cast<uint32_t>(camera.width);
+	renderTargetExtent.height = static_cast<uint32_t>(camera.height);
+	depthImage = VulkanImage(IMAGETYPE::DEPTH, renderTargetExtent, depthFormat, *this, camera.vrmode ? stencilpath : std::string(""));
+}
+
+void VulkanContextInfo::determineDepthFormat() {
+	depthFormat = findSupportedFormat(
+	//{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+	{ VK_FORMAT_D32_SFLOAT_S8_UINT },
+		VK_IMAGE_TILING_OPTIMAL,
+		//VK_IMAGE_TILING_LINEAR,
+		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+	);
+}
+
 VkFormat VulkanContextInfo::findSupportedFormat(const std::vector<VkFormat>& candidates, 
 	const VkImageTiling tiling, const VkFormatFeatureFlags features) const 
 {
@@ -244,24 +267,6 @@ VkFormat VulkanContextInfo::findSupportedFormat(const std::vector<VkFormat>& can
 
 	std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to find supported depth format for physical device!";
 	throw std::runtime_error(ss.str());
-}
-
-void VulkanContextInfo::createDepthImage() {
-	determineDepthFormat();
-	//depthImage = VulkanImage(IMAGETYPE::DEPTH, swapChainExtent, depthFormat, *this);
-	VkExtent2D renderTargetExtent;
-	float vrScaleXback = camera.vrmode ? 2.f : 1.f;
-	renderTargetExtent.width = vrScaleXback * static_cast<uint32_t>(camera.width);
-	renderTargetExtent.height = static_cast<uint32_t>(camera.height);
-	depthImage = VulkanImage(IMAGETYPE::DEPTH, renderTargetExtent, depthFormat, *this);
-}
-
-void VulkanContextInfo::determineDepthFormat() {
-	depthFormat = findSupportedFormat(
-	{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-		VK_IMAGE_TILING_OPTIMAL,
-		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-	);
 }
 bool VulkanContextInfo::checkValidationLayerSupport() {
 	uint32_t layerCount;
