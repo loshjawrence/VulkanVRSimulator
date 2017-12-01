@@ -24,6 +24,7 @@ layout(location = 0) out vec4 outColor;
 //}
 
 
+//Modified code sample
 // Values that were scattered throughout the Oculus world demo
 const vec4 HmdWarpParam = vec4(1.0, 0.22, 0.24, 0.0); // For the 7-inch device
 const vec4 ChromAbParam = vec4(0.996, -0.004, 1.014, 0.0);
@@ -69,9 +70,15 @@ void main() {
     //to sample one eye of the original full screen texture
     //mapping UV(0-1) to either 0-.5 or .5-1 based on camIndex
     //NOTE: THIS PROB NEEDS TO BE ndc converted and shifted, 
-    //or take this oTexCoord(already converted and shifted for vr) as tcGreen and find the rest
-    vec2 oTexCoord = fragUV;
-//    oTexCoord.x = (oTexCoord.x * (1.f - 0.5*vrMode)) + 0.5f*camIndex;
+    //
+
+
+
+    //get full uv(correct eye uv) then put to ndc according to cam index
+    const float screenWidth = 1280;
+    const float screenHeight = 800;
+    const vec2 fullUV = vec2( gl_FragCoord.x/screenWidth, gl_FragCoord.y/screenHeight );
+    vec2 oTexCoord = fullUV;
 
     // Compute the viewport size
     bool isRight = oTexCoord.x > 0.5;
@@ -104,12 +111,11 @@ void main() {
     vec2 tcGreen = LensCenter + Scale * theta1;
     vec2 tcBlue = LensCenter + Scale * thetaBlue;
 
-    vec2 tc = tcGreen;
-    vec2 equivNDC = vec2((tc.x - 0.5*camIndex)*4.f-1.f , tc.y*2.f-1.f); 
+    //tcGreen has no aberration
+    vec2 equivNDC = vec2((tcGreen.x - 0.5*camIndex)*4.f-1.f , tcGreen.y*2.f-1.f); 
     if(any(greaterThan(abs(equivNDC), vec2(1.f)))) {
         outColor = vec4(0.0, 0.0, 0.0, 1.0);
     } else {
-
 //        outColor = vec4(tcGreen.x, tcGreen.y, 0.f, 1.f);
 		outColor = vec4(texture(texSampler, tcRed).r,
 						texture(texSampler, tcGreen).g,

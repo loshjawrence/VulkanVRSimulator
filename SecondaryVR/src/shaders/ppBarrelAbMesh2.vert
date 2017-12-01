@@ -106,6 +106,8 @@ float convertUVToRad(const vec2 uv, const int camIndex) {
 	return length(equivNDC);
 }
 
+//this uses secant method for finding inverse of brown-conrady distortion
+//(going towards the center), modifed code sample from webvr
 vec3 distortInverse(vec3 ndc, const int camIndex) {
     // Uses Secant method for finding inverse of function
     //based on eulers method for approx. inverse of function i.e. given y find x

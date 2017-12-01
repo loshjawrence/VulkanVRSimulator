@@ -25,39 +25,12 @@ out gl_PerVertex {
 };
 
 
-vec2 barrelDistortion(vec2 coord, float amt) {
-	vec2 cc = coord - 0.5;
-	float dist = dot(cc, cc);
-	return coord + cc * dist * amt;
-}
-float sat( float t ) {
-	return clamp( t, 0.0, 1.0 );
-}
-float linterp( float t ) {
-	return sat( 1.0 - abs( 2.0*t - 1.0 ) );
-}
-float remap( float t, float a, float b ) {
-	return sat( (t - a) / (b - a) );
-}
-vec4 spectrum_offset( float t ) {
-	vec4 ret;
-	float lo = step(t,0.5);
-	float hi = 1.0-lo;
-	float w = linterp( remap( t, 1.0/6.0, 5.0/6.0 ) );
-	ret = vec4(lo,1.0,hi, 1.) * vec4(1.0-w, w, 1.0-w, 1.);
-	return pow( ret, vec4(1.0/2.2) );
-}
-
-const float max_distort = 2.2;
-const int num_iter = 12;
-const float reci_num_iter_f = 1.0 / float(num_iter);
 
 //or: http://jsfiddle.net/s175ozts/4/
 //https://www.imgtec.com/blog/speeding-up-gpu-barrel-distortion-correction-in-mobile-vr/
 const float a = 0.24f;
 const float b = 0.22f;
 const float c = 1.f - (a + b);
-
 vec2 getOculusBarrelSourceNDC(vec2 ndc) {
     // Calculate the source location "radius" (distance from the centre of the viewport)
     // ndc - xy position of the current fragment (destination) in NDC space [-1 1]^2
@@ -111,7 +84,6 @@ void main() {
     fragUV.x = (fragUV.x * (1.f - 0.5*vrMode)) + 0.5f*camIndex;
 
     if(1 == vrMode) {
-//        gl_Position     = vec4(inPos, 1.0);
         gl_Position = vec4(distortInverse(inPos), 1.f);
     } else {
         gl_Position = vec4(inPos, 1.f);
