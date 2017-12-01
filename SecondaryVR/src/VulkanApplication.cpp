@@ -138,7 +138,7 @@ void VulkanApplication::drawFrame() {
 	//////////////////
 	//// FORWARD /////
 	//////////////////
-	//PRIMARY FILLED WITH HOMOGENOUS SECONDARY
+	//PRIMARY FILLED WITH HOMOGENOUS SECONDARY COMMAND BUFFERS
 	//VkCommandBufferInheritanceInfo inheritanceInfo = {};
 	//beginRecordingPrimary(inheritanceInfo, imageIndex);
 	//for (Model& model : models) {
@@ -265,7 +265,8 @@ void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& in
 	inheritanceInfo.pNext = NULL;
 	//inheritanceInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
 	inheritanceInfo.framebuffer = forwardPipelinesFramebuffers[imageIndex];
-	inheritanceInfo.renderPass = allRenderPasses.renderPass;
+	inheritanceInfo.renderPass = contextInfo.camera.vrmode ? 
+		allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
 	inheritanceInfo.occlusionQueryEnable = VK_FALSE;
 	inheritanceInfo.pipelineStatistics = 0;
 
@@ -278,7 +279,7 @@ void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& in
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = allRenderPasses.renderPass;
+	renderPassInfo.renderPass = inheritanceInfo.renderPass;
 	//renderPassInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
 	renderPassInfo.framebuffer = forwardPipelinesFramebuffers[imageIndex];
 	renderPassInfo.renderArea.offset = { 0, 0 };
@@ -312,7 +313,8 @@ void VulkanApplication::beginRecordingPrimary(const uint32_t imageIndex) {
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = allRenderPasses.renderPass;
+	renderPassInfo.renderPass = contextInfo.camera.vrmode ? 
+		allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
 	//renderPassInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
 	renderPassInfo.framebuffer = forwardPipelinesFramebuffers[imageIndex];
 	renderPassInfo.renderArea.offset = { 0, 0 };
@@ -328,8 +330,13 @@ void VulkanApplication::beginRecordingPrimary(const uint32_t imageIndex) {
 
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	//clearValues[1].depthStencil = { 1.f, 1 };
-	clearValues[1].depthStencil = { 1.f };
+	if(contextInfo.camera.vrmode)
+		clearValues[1].depthStencil = { 1.f };
+	else
+		clearValues[1].depthStencil = { 1.f, 1 };
+	////clearValues[1].depthStencil = { 1.f, 1 };
+	//clearValues[1].depthStencil = { 1.f };
+
 
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
@@ -583,7 +590,8 @@ void VulkanApplication::initForwardPipelinesVulkanImagesAndFramebuffers() {
 
 		//TODO: if last make present otherwise normal post process
 		std::vector<VkImageView> attachments = { forwardPipelinesVulkanImages[i].imageView, contextInfo.depthImage.imageView };
-		framebufferCreateInfo.renderPass = allRenderPasses.renderPass;
+		framebufferCreateInfo.renderPass = contextInfo.camera.vrmode ? 
+			allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
 		framebufferCreateInfo.pAttachments = attachments.data();
 		framebufferCreateInfo.attachmentCount = attachments.size();
 		//framebufferCreateInfo.width = contextInfo.swapChainExtent.width;

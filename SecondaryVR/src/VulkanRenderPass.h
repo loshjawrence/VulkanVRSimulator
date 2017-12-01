@@ -19,6 +19,7 @@
 class VulkanRenderPass {
 public:
 	VkRenderPass renderPass;
+	VkRenderPass renderPassStencilLoading;
 	VkRenderPass renderPassPostProcess;
 	VkRenderPass renderPassPostProcessPresent;
 	
@@ -29,6 +30,7 @@ public:
 	~VulkanRenderPass();
 	void createRenderPasses(const VulkanContextInfo& contextInfo);
 	void createRenderPassForward(const VulkanContextInfo& contextInfo);
+	void createRenderPassForwardStencilLoading(const VulkanContextInfo& contextInfo);
 	void createRenderPassPostProcess(const VulkanContextInfo& contextInfo);
 	void createRenderPassPostProcessPresent(const VulkanContextInfo& contextInfo);
 

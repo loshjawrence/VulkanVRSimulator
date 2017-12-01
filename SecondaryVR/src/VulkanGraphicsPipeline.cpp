@@ -204,7 +204,7 @@ void VulkanGraphicsPipeline::createGraphicsPipeline(const VulkanRenderPass& rend
 	pipelineInfo.pDepthStencilState = &depthStencil;
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.layout = pipelineLayout;
-	pipelineInfo.renderPass = renderPass.renderPass;
+	pipelineInfo.renderPass = contextInfo.camera.vrmode ? renderPass.renderPassStencilLoading : renderPass.renderPass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.pDynamicState = &dynamicInfo;
