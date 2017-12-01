@@ -44,15 +44,15 @@ std::string convertFloatToString(double number)
 }
 
 void VulkanApplication::loadModels() {
-	const int num = 4;
-	const int numMeshesPerStride = 4;
+	const int num = 1;
+	const int numMeshesPerStride = 1;
 	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
 	for (int i = 0; i < num/numMeshesPerStride; i += numMeshesPerStride) {
 		const float x = static_cast<float>(rng.nextUInt(1));
 		const float y = static_cast<float>(rng.nextUInt(1));
 		const float z = static_cast<float>(rng.nextUInt(1));
-		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
 		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
@@ -61,14 +61,14 @@ void VulkanApplication::loadModels() {
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/cerberus_maximov/source/Cerberus_LP.FBX.fbx"), 1,
 			//glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
-		defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
-		defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
-		defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
+		//defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
+		//defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
+		//defaultScene[i+1] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
@@ -85,7 +85,7 @@ void VulkanApplication::initVulkan() {
 	
 	//make a GLFW window
 	initWindow();
-	//createRadialStencilMask();//no need to generate everytime
+	createRadialStencilMask();//no need to generate everytime
 
 	//context info holds vulkan things like instance, phys and logical device, swap chain info, depthImage, command pools and queues
 	contextInfo = VulkanContextInfo(window,std::string("radialStencilMask.bmp"));
@@ -265,7 +265,7 @@ void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& in
 	inheritanceInfo.pNext = NULL;
 	//inheritanceInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
 	inheritanceInfo.framebuffer = forwardPipelinesFramebuffers[imageIndex];
-	inheritanceInfo.renderPass = contextInfo.camera.vrmode ? 
+	inheritanceInfo.renderPass = (contextInfo.camera.vrmode && useStencil) ? 
 		allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
 	inheritanceInfo.occlusionQueryEnable = VK_FALSE;
 	inheritanceInfo.pipelineStatistics = 0;
@@ -295,7 +295,11 @@ void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& in
 
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	clearValues[1].depthStencil = { 1.0f, 1 };
+	if(contextInfo.camera.vrmode && useStencil)
+		clearValues[1].depthStencil = { 1.f };
+	else
+		clearValues[1].depthStencil = { 1.f, 1 };
+	//clearValues[1].depthStencil = { 1.0f, 1 };
 	//clearValues[1].depthStencil = { 1.0f };
 
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -313,7 +317,7 @@ void VulkanApplication::beginRecordingPrimary(const uint32_t imageIndex) {
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = contextInfo.camera.vrmode ? 
+	renderPassInfo.renderPass = (contextInfo.camera.vrmode && useStencil) ? 
 		allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
 	//renderPassInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
 	renderPassInfo.framebuffer = forwardPipelinesFramebuffers[imageIndex];
@@ -330,7 +334,7 @@ void VulkanApplication::beginRecordingPrimary(const uint32_t imageIndex) {
 
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	if(contextInfo.camera.vrmode)
+	if(contextInfo.camera.vrmode && useStencil)
 		clearValues[1].depthStencil = { 1.f };
 	else
 		clearValues[1].depthStencil = { 1.f, 1 };
@@ -467,6 +471,7 @@ void VulkanApplication::processInputAndUpdateFPS() {
 			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::DOWN, deltaTime);
 		if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
 			contextInfo.camera.updateVrModeAndCameras();
+			contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
 			recreateSwapChain();
 		}
 }
@@ -508,6 +513,7 @@ void VulkanApplication::createPipelines() {
 	//forwardPipelines
 	forwardPipelines.resize(allShaders_ForwardPipeline.size());
 	textureMapFlagsToForwardPipelineIndex.resize(allShaders_ForwardPipeline.size());
+	initForwardPipelinesVulkanImagesAndFramebuffers();
 
 	for (uint32_t i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
 		int numImageSamplers = 0;
@@ -525,33 +531,32 @@ void VulkanApplication::createPipelines() {
 		const uint32_t numImageSamplers = allShaders_PostProcessPipeline[i].second;
 
 		//need an mapping from numimagesamplers to layouttypes index
-		//TODO: If last post process then outputImage format should be swapchain format, otherwise 16F
-		postProcessPipelines[i] = PostProcessPipeline(allShaders_PostProcessPipeline[i].first,
-			allRenderPasses, contextInfo, &(VulkanDescriptor::postProcessLayoutTypes[numImageSamplers-1]));
+		if (i != allShaders_PostProcessPipeline.size() - 1) { //if not last output format should be 16F
+			postProcessPipelines[i] = PostProcessPipeline(allShaders_PostProcessPipeline[i].first,
+				allRenderPasses, contextInfo, &(VulkanDescriptor::postProcessLayoutTypes[numImageSamplers - 1]), false);
+		} else { //last one, outputImage should be swapchain format
+			postProcessPipelines[i] = PostProcessPipeline(allShaders_PostProcessPipeline[i].first,
+				allRenderPasses, contextInfo, &(VulkanDescriptor::postProcessLayoutTypes[numImageSamplers - 1]), true);
+		}
 	}
 
 	//each pp needs inputdescriptor set ofprevious stage
-	initForwardPipelinesVulkanImagesAndFramebuffers();
 	postProcessPipelines[0].createInputDescriptors(contextInfo, forwardPipelinesVulkanImages);
 	for (int i = 1; i < postProcessPipelines.size(); ++i) {
+		//TODO: second are should be determined from tuple element in allShaders_PostProcessPipeline specifying which stage feeds it
 		postProcessPipelines[i].createInputDescriptors(contextInfo, postProcessPipelines[i-1].outputImages);
 	}
 
 	//create the static command buffers(no dynamic input for post processing)
-	std::vector<Mesh> ppMeshes; 
-	if (contextInfo.camera.vrmode) {
-		ppMeshes.push_back(ndcBarrelMesh_PreCalc[0]);
-		ppMeshes.push_back(ndcBarrelMesh_PreCalc[1]);
-		//ppMeshes.push_back(ndcBarrelMesh[0]);
-		//ppMeshes.push_back(ndcBarrelMesh[1]);
-		//ppMeshes.push_back(ndcTriangle);
-		//ppMeshes.push_back(ndcTriangle);
-	} else {
-		ppMeshes.push_back(ndcTriangle);
-	}
-
-	for (auto& pipeline : postProcessPipelines) {
-		pipeline.createStaticCommandBuffers(contextInfo, allRenderPasses, ppMeshes, contextInfo.camera.vrmode);
+	for (uint32_t i = 0; i < allShaders_PostProcessPipeline.size(); ++i) {
+		//need an mapping from numimagesamplers to layouttypes index
+		if (i != allShaders_PostProcessPipeline.size() - 1) { //if not last output format should be 16F
+			postProcessPipelines[i].createStaticCommandBuffers(contextInfo, allRenderPasses, {ndcTriangle, ndcTriangle});
+		} else { //last one, outputImage should be swapchain format
+			postProcessPipelines[i].createStaticCommandBuffers(contextInfo, allRenderPasses, {ndcTriangle, ndcTriangle});
+			//postProcessPipelines[i].createStaticCommandBuffers(contextInfo, allRenderPasses, {ndcBarrelMesh[0], ndcBarrelMesh[1]});
+			//postProcessPipelines[i].createStaticCommandBuffers(contextInfo, allRenderPasses, {ndcBarrelMesh_PreCalc[0], ndcBarrelMesh_PreCalc[1]});
+		}
 	}
 
 
@@ -589,7 +594,7 @@ void VulkanApplication::initForwardPipelinesVulkanImagesAndFramebuffers() {
 
 		//TODO: if last make present otherwise normal post process
 		std::vector<VkImageView> attachments = { forwardPipelinesVulkanImages[i].imageView, contextInfo.depthImage.imageView };
-		framebufferCreateInfo.renderPass = contextInfo.camera.vrmode ? 
+		framebufferCreateInfo.renderPass = (contextInfo.camera.vrmode && useStencil) ? 
 			allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
 		framebufferCreateInfo.pAttachments = attachments.data();
 		framebufferCreateInfo.attachmentCount = attachments.size();
@@ -793,9 +798,13 @@ void VulkanApplication::GLFW_ScrollCallback(GLFWwindow* window, double xoffset, 
 }
 
 void VulkanApplication::createRadialStencilMask() {
-	const float vrScaleXback = contextInfo.camera.vrmode ? 2.f : 1.f;
-	const float width = vrScaleXback * contextInfo.camera.width;
-	const float height = contextInfo.camera.height;
+	const bool pretendStartsVR = false;
+	const float width = pretendStartsVR ? contextInfo.camera.virtualRenderTargetScaling * contextInfo.camera.width : contextInfo.camera.width;
+	const float height = pretendStartsVR ? contextInfo.camera.virtualRenderTargetScaling * contextInfo.camera.height : contextInfo.camera.height;
+
+//	const float vrScaleXback = contextInfo.camera.vrmode ? 2.f : 1.f;
+	//const float width = vrScaleXback * contextInfo.camera.width;
+	//const float height = contextInfo.camera.height;
 	const float invWidth = 1.f / width;
 	const float invHeight = 1.f / height;
 	const float vrMode = 1.f;

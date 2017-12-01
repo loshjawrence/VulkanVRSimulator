@@ -23,12 +23,13 @@ public:
 	float fov = 45.f;
 	float virtualRenderTargetScaling = 1.4f;
 	float unScale = 1/1.4f;
+	bool vrmode = false;
 	//DK1 full
 	//float width = 1280;
 	//float height = 800;
 	//DK1 virtual 1.4x(barrel will shrink to down)
-	float width = startingWidth*virtualRenderTargetScaling;
-	float height = startingHeight*virtualRenderTargetScaling;
+	float width = startingWidth*(vrmode ? virtualRenderTargetScaling : 1.f);
+	float height = startingHeight*(vrmode ? virtualRenderTargetScaling : 1.f);
 	//HALF modern
 	//float width = 1080;
 	//float height = 600;
@@ -44,7 +45,6 @@ public:
 	glm::mat4 view[2];
 	glm::mat4 proj = glm::perspective(glm::radians(fov), width / height, near, far);
 
-	bool vrmode = false;
 
 public:
 	Camera();

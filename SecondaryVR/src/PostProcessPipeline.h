@@ -50,10 +50,13 @@ public:
 	//recording state
 	bool recording = false;
 
+	//is Last post process
+	bool isPresent;
+
 public:
 	PostProcessPipeline();
 	PostProcessPipeline(const std::vector<std::string>& shaderspaths, const VulkanRenderPass& renderPass,
-		const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts);
+		const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts, const bool isPresent);
 
 	~PostProcessPipeline();
 
@@ -65,7 +68,7 @@ public:
 	//void createStaticCommandBuffers(const VulkanContextInfo& contextInfo,
 	//	const VulkanRenderPass& renderPass, const Mesh& mesh, const bool vrmode);
 	void createStaticCommandBuffers(const VulkanContextInfo& contextInfo,
-		const VulkanRenderPass& renderPass, const std::vector<Mesh>& meshes, const bool vrmode);//static since no dynamic input, mesh is just quad or triangle
+		const VulkanRenderPass& renderPass, const std::vector<Mesh>& meshes);//static since no dynamic input, mesh is just quad or triangle
 
 
 	void allocateCommandBuffers(const VulkanContextInfo& contextInfo);

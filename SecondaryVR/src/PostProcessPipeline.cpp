@@ -16,8 +16,9 @@ PostProcessPipeline::PostProcessPipeline() {
 }
 
 PostProcessPipeline::PostProcessPipeline(const std::vector<std::string>& shaderpaths,
-	const VulkanRenderPass& renderPass, const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts) 
-	: shaderpaths(shaderpaths)
+	const VulkanRenderPass& renderPass, const VulkanContextInfo& contextInfo, 
+	const VkDescriptorSetLayout* setLayouts, const bool isPresent) 
+	: shaderpaths(shaderpaths), isPresent(isPresent)
 {
 
 	//TODO: determine renderPass type here based on pipeline type? or will it all be one renderpass in the end?
@@ -43,10 +44,16 @@ void PostProcessPipeline::createOutputImages(const VulkanContextInfo& contextInf
 	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
 		
 		//TODO: if flag is present then use swapchain stuff otherwise 16F
-		//outputImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.swapChainExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
-		outputImages[i].image = contextInfo.swapChainImages[i];
-		outputImages[i].imageView = contextInfo.swapChainImageViews[i];
-		outputImages[i].extent = contextInfo.swapChainExtent;
+		if (!isPresent) {
+			VkExtent2D cameraExtent = {};
+			cameraExtent.height = contextInfo.camera.height;
+			cameraExtent.width = contextInfo.camera.vrmode ? 2.f * contextInfo.camera.width : contextInfo.camera.width;
+			outputImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, cameraExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
+		} else {
+			outputImages[i].image = contextInfo.swapChainImages[i];
+			outputImages[i].imageView = contextInfo.swapChainImageViews[i];
+			outputImages[i].extent = contextInfo.swapChainExtent;
+		}
 	}
 }
 
@@ -69,28 +76,31 @@ void PostProcessPipeline::addCommandPools(const VulkanContextInfo& contextInfo, 
 
 void PostProcessPipeline::createFramebuffers(const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass) {
 	framebuffers.resize(contextInfo.swapChainImages.size());
-	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-		framebuffers[i] = contextInfo.swapChainFramebuffers[i];
+	if (isPresent) {
+		for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+			framebuffers[i] = contextInfo.swapChainFramebuffers[i];
+		}
+	} else {
+		for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+			VkFramebufferCreateInfo framebufferCreateInfo = {};
+			framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferCreateInfo.pNext = NULL;
+			
+			//TODO: if last make present otherwise normal post process
+			framebufferCreateInfo.renderPass = renderPass.renderPassPostProcess;
+			framebufferCreateInfo.pAttachments = &outputImages[i].imageView;
+			framebufferCreateInfo.attachmentCount = 1;
+
+			framebufferCreateInfo.width = contextInfo.camera.vrmode ? 2.f * contextInfo.camera.width : contextInfo.camera.width;
+			framebufferCreateInfo.height = contextInfo.camera.height;
+			framebufferCreateInfo.layers = 1;
+
+			if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &framebuffers[i]) != VK_SUCCESS) {
+				std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create framebuffer!";
+				throw std::runtime_error(ss.str());
+			}
+		}
 	}
-	//for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-	//	VkFramebufferCreateInfo framebufferCreateInfo = {};
-	//	framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	//	framebufferCreateInfo.pNext = NULL;
-	//	
-	//	//TODO: if last make present otherwise normal post process
-	//	framebufferCreateInfo.renderPass = renderPass.renderPassPostProcessPresent;
-	//	framebufferCreateInfo.pAttachments = &outputImages[i].imageView;
-	//	framebufferCreateInfo.attachmentCount = 1;
-
-	//	framebufferCreateInfo.width = contextInfo.swapChainExtent.width;
-	//	framebufferCreateInfo.height = contextInfo.swapChainExtent.height;
-	//	framebufferCreateInfo.layers = 1;
-
-	//	if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &framebuffers[i]) != VK_SUCCESS) {
-	//		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create framebuffer!";
-	//		throw std::runtime_error(ss.str());
-	//	}
-	//}
 }
 
 void PostProcessPipeline::allocateCommandBuffers(const VulkanContextInfo& contextInfo) {
@@ -99,8 +109,8 @@ void PostProcessPipeline::allocateCommandBuffers(const VulkanContextInfo& contex
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.commandPool = commandPools[0];
-	//allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	//allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
 	allocInfo.commandBufferCount = commandBuffers.size();
 
 	if (vkAllocateCommandBuffers(contextInfo.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
@@ -110,8 +120,7 @@ void PostProcessPipeline::allocateCommandBuffers(const VulkanContextInfo& contex
 }
 
 void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
-	const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts)
-{
+	const VulkanContextInfo& contextInfo, const VkDescriptorSetLayout* setLayouts) {
 	auto vertShaderCode = readFile(shaderpaths[0]);
 	auto fragShaderCode = readFile(shaderpaths[1]);
 
@@ -123,7 +132,7 @@ void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
 	vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
 	vertShaderStageInfo.module = vertShaderModule;
 	vertShaderStageInfo.pName = "main";
-	
+
 	VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
 	fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -152,14 +161,17 @@ void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
 	VkViewport viewport = {};
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)contextInfo.swapChainExtent.width;
-	viewport.height = (float)contextInfo.swapChainExtent.height;
+	viewport.width = isPresent ? (float)contextInfo.swapChainExtent.width : contextInfo.camera.width;
+	viewport.height = isPresent ? (float)contextInfo.swapChainExtent.height : contextInfo.camera.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	scissor.extent = contextInfo.swapChainExtent;
+	VkExtent2D cameraExtent = {}; 
+	cameraExtent.height = contextInfo.camera.height; 
+	cameraExtent.width = contextInfo.camera.vrmode ? 2.f * contextInfo.camera.width : contextInfo.camera.width;
+	scissor.extent = isPresent ? contextInfo.swapChainExtent : cameraExtent;
 
 	VkPipelineViewportStateCreateInfo viewportState = {};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -258,7 +270,7 @@ void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
 	pipelineInfo.pDepthStencilState = &depthStencil;
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.layout = pipelineLayout;
-	pipelineInfo.renderPass = renderPass.renderPassPostProcessPresent;
+	pipelineInfo.renderPass = isPresent ? renderPass.renderPassPostProcessPresent : renderPass.renderPassPostProcess;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.pDynamicState = &dynamicInfo;
@@ -402,35 +414,56 @@ void PostProcessPipeline::getViewportAndScissor(VkViewport& outViewport, VkRect2
 	outViewport.minDepth = 0.0f;
 	outViewport.maxDepth = 1.0f;
 
+	const float width = isPresent ? 
+		(contextInfo.camera.vrmode ? contextInfo.swapChainExtent.width * 0.5f : contextInfo.swapChainExtent.width)
+		: contextInfo.camera.width;
+	const float height = isPresent ? contextInfo.swapChainExtent.height : contextInfo.camera.height;
 	if (vrmode) {
-		outViewport.width = (float)contextInfo.swapChainExtent.width * 0.5f;
-		outViewport.height = (float)contextInfo.swapChainExtent.height;
-		if (camIndex == 0) {
-			outViewport.x = 0.0f;
-			outViewport.y = 0.0f;
-			outScissor.offset = { (int32_t )outViewport.x,		(int32_t )outViewport.y };
-			outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
-		} else {
-			outViewport.x = outViewport.width;
-			outViewport.y = 0.0f;
-			outScissor.offset = { (int32_t )outViewport.x,		(int32_t )outViewport.y };
-			outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
-		}
+		outViewport.width = width;
+		outViewport.height = height;
+		outViewport.x = (0 == camIndex) ? 0.0f : outViewport.width;
+		outViewport.y = 0.0f;
+		outScissor.offset = { (int32_t)outViewport.x,		(int32_t)outViewport.y };
+		outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
 	} else {
 		outViewport.x = 0.0f;
 		outViewport.y = 0.0f;
-		outViewport.width = (float)contextInfo.swapChainExtent.width;
-		outViewport.height = (float)contextInfo.swapChainExtent.height;
-
+		outViewport.width = width;
+		outViewport.height = height;
 		outScissor.offset = { 0, 0 };
-		outScissor.extent = contextInfo.swapChainExtent;
+		outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
 	}
+
+	//outViewport.minDepth = 0.0f;
+	//outViewport.maxDepth = 1.0f;
+
+	//if (vrmode) {
+	//	outViewport.width = (float)contextInfo.swapChainExtent.width * 0.5f;
+	//	outViewport.height = (float)contextInfo.swapChainExtent.height;
+	//	if (camIndex == 0) {
+	//		outViewport.x = 0.0f;
+	//		outViewport.y = 0.0f;
+	//		outScissor.offset = { (int32_t )outViewport.x,		(int32_t )outViewport.y };
+	//		outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
+	//	} else {
+	//		outViewport.x = outViewport.width;
+	//		outViewport.y = 0.0f;
+	//		outScissor.offset = { (int32_t )outViewport.x,		(int32_t )outViewport.y };
+	//		outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
+	//	}
+	//} else {
+	//	outViewport.x = 0.0f;
+	//	outViewport.y = 0.0f;
+	//	outViewport.width = (float)contextInfo.swapChainExtent.width;
+	//	outViewport.height = (float)contextInfo.swapChainExtent.height;
+
+	//	outScissor.offset = { 0, 0 };
+	//	outScissor.extent = contextInfo.swapChainExtent;
+	//}
 }
 
-//void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& contextInfo, 
-//	const VulkanRenderPass& renderPass, const Mesh& mesh, const bool vrmode) 
 void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& contextInfo, 
-	const VulkanRenderPass& renderPass, const std::vector<Mesh>& meshes, const bool vrmode) 
+	const VulkanRenderPass& renderPass, const std::vector<Mesh>& meshes) 
 {
 	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
 		VkCommandBufferAllocateInfo allocInfo = {};
@@ -461,10 +494,12 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 
 		VkRenderPassBeginInfo renderPassInfo = {};
 		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-		renderPassInfo.renderPass = renderPass.renderPassPostProcessPresent;
+		renderPassInfo.renderPass = isPresent ? renderPass.renderPassPostProcessPresent : renderPass.renderPassPostProcess;
 		renderPassInfo.framebuffer = framebuffers[i];
 		renderPassInfo.renderArea.offset = { 0, 0 };
-		renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
+		VkExtent2D cameraExtent = {}; cameraExtent.height = contextInfo.camera.height;
+		cameraExtent.width = contextInfo.camera.vrmode ? 2.f *  contextInfo.camera.width : contextInfo.camera.width;
+		renderPassInfo.renderArea.extent = isPresent ? contextInfo.swapChainExtent : cameraExtent;
 
 		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 		renderPassInfo.pClearValues = clearValues.data();
@@ -486,18 +521,18 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 		const uint32_t camIndex = 0;
-		const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(vrmode)};
+		const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode)};
 		vkCmdPushConstants(commandBuffers[i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 
 		VkViewport viewport = {}; VkRect2D scissor = {};
-		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, contextInfo.camera.vrmode);
 		vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
 		vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
 
 		//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
 		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(meshes[0].mIndices.size()), 1, 0, 0, 0);
 
-		if (vrmode) {
+		if (contextInfo.camera.vrmode) {
 			//bind other precalc mesh(can't just use the same one since not the same(asymmetrical/mirrored)
 			const uint32_t camIndex = 1;
 			VkBuffer vertexBuffers[] = { meshes[camIndex].vertexBuffer };
@@ -507,9 +542,9 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-			const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(vrmode) };
+			const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode) };
 			vkCmdPushConstants(commandBuffers[i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
-			getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+			getViewportAndScissor(viewport, scissor, contextInfo, camIndex, contextInfo.camera.vrmode);
 			vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
 			vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
 
