@@ -1,7 +1,7 @@
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture,
 Final Project - Vulkan VR Rendering**
 
-#Barrel Filter and Aberration Methods<br />
+# Barrel Filter and Aberration Methods
 * Based on Brown-Conrady Distortion model, but must get constants from HMD vendor
 * Option 1. Do it all in frag shader (each fragment is doing the math)
 * Option 2. Warp a mesh down in vertex shader and do chormatic aberration in fragment shader(or vertex shader and let the hardware interopolate, Brown-Conrady isn't linear but if the mesh is dense enough it won't matter)
@@ -10,33 +10,33 @@ Final Project - Vulkan VR Rendering**
 * A forth option avoids a post process by warping the NDC positions of the drawn meshes in the vertex shader and tesselating them. I belive this requires an art team to make sure this works out for every mesh. 
 * see: https://www.imgtec.com/blog/speeding-up-gpu-barrel-distortion-correction-in-mobile-vr/
 for reasons why the mesh needs to be dense enough (texture sampling gets funky because of Distortion model's nonlinearity. But if you subdivide enough, things approach linearity)
-![](img/nonstencil.png)
-![](img/aberration.png)
+![](SecondaryVR/img/nonstencil.png)
+![](SecondaryVR/img/aberration.png)
 
 
-#Issues with finding inverse Brown-Conrady Distortion<br />
+# Issues with finding inverse Brown-Conrady Distortion
 * I relied on the Secant Method for finding the inverse of non-invertable function in order to reverse warp the mesh in optios 2 and 3 above. 
 * However, you can run into root jumping issues, which I did but got around by letting the mesh position fall where it may recalculating its UV and finding the source UV from the normal Brown-conrady distortion. It's all pre-baked anyway so it doesnt matter it we take this extra step, just so long as the end result is correct.
-![](img/secantmethod.png)
-![](img/rootjumping.png)
-![](img/precalcmesh.png)
+![](SecondaryVR/img/secantmethod.png)
+![](SecondaryVR/img/rootjumping.png)
+![](SecondaryVR/img/precalcmesh.png)
 
-#Radial Density Masking<br />
+# Radial Density Masking
 * see https://www.youtube.com/watch?v=DdL3WC_oBO4
 * Due to barrel distortion (needed to counteract the pincushioning as the 2D image refracts though the lenses) and hits our eyes, we are over rendering at the edges of the image, by as much as 2x. Barrel distortion squeezes down a 1.4x virtual render target to the device's screen size, pixels in the center get blown out and pixels at the edge get pulled in. See below.
 * Radial Density masking uses the stencil to cull 2x2 pixel quads in early-z to avoid rendering them in the fragment shader. 
 * The Mask is made by hand in code and uploaded to the stencil once and is used by the forward render pass (VR renderers need forward rendering because MSAA is such a huge win for image fidelity)
 * Masking is huge savings, about 20-25% off the top, the issue however is hole filling. Which can put you back where you started, it did for me.
-![](img/radialStencilMask.bmp)
-![](img/stencilMask1to1.png)
-![](img/stencilmask.png)
-![](img/all.png)
-![](img/noBarrelNoStencil.png)
-![](img/noBarrelStencilHoleFill.png)
+![](SecondaryVR/img/radialStencilMask.bmp)
+![](SecondaryVR/img/stencilMask1to1.png)
+![](SecondaryVR/img/stencilmask.png)
+![](SecondaryVR/img/all.png)
+![](SecondaryVR/img/noBarrelNoStencil.png)
+![](SecondaryVR/img/noBarrelStencilHoleFill.png)
 
 
 
-#Vulkan Performance Things<br />
+# Vulkan Performance Things
 * To limit context switches (changing shaders, mesh info, etc):
 * Sift shader calls into secondary command buffers and combine into one primary so there's only one shader switch for each shader that is needed in the render pass
 * use push constants for dynamic things (model matrix, time, bit field flags)
@@ -45,12 +45,12 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 * Reduce command buffer count, number of render passes done to build a frame
 * Use subpasses when you can, requires 1 to 1 frag sampling from the output of one subpass to the input of another. Good use case would be deferred rendering.
 
-#Data<br />
+# Data
 **Performance of various Barrel/Chromatic Aberration Techniques and Radial Density Mask**<br />
-![](img/graphcullvsnocull.png)
+![](SecondaryVR/img/graphcullvsnocull.png)
 
 **Push Constant vs UBO updates**<br />
-![](img/pushconstant.png)
+![](SecondaryVR/img/pushconstant.png)
 
 
 **GPU Device Properties**<br />
