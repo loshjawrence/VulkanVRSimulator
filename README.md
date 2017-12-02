@@ -30,10 +30,10 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 ![](SecondaryVR/img/radialStencilMask.bmp)
 ![](SecondaryVR/img/stencilMask1to1.png)
 ![](SecondaryVR/img/stencilmask.png)
+![](SecondaryVR/img/holefill.png)
 ![](SecondaryVR/img/all.png)
 ![](SecondaryVR/img/noBarrelNoStencil.png)
 ![](SecondaryVR/img/noBarrelStencilHoleFill.png)
-
 
 
 # Vulkan Performance Things
@@ -47,7 +47,7 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 
 # Data
 **Performance of various Barrel/Chromatic Aberration Techniques and Radial Density Mask**<br />
-![](SecondaryVR/img/graphcullvsnocull.png)
+![](SecondaryVR/img/BarrelAberrationStencil.png)
 
 **Push Constant vs UBO updates**<br />
 ![](SecondaryVR/img/pushconstant.png)
