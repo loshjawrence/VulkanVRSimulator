@@ -27,6 +27,9 @@ class Model;
 
 struct PostProcessPushConstant {
 	uint32_t toggleFlags;
+	float hmdWidth;
+	float hmdHeight;
+	float VRvirtualScaling;
 	static const VkShaderStageFlags stages = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 };
 

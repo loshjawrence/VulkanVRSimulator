@@ -164,8 +164,8 @@ void Mesh::getSourceUV(const uint32_t camIndex, const glm::vec2& oTexCoord,
 	// Values that were scattered throughout the Oculus world demo
 	const glm::vec4 HmdWarpParam = glm::vec4(1.0f, 0.22f, 0.24f, 0.0f); // For the 7-inch device
 	const glm::vec4 ChromAbParam = glm::vec4(0.996f, -0.004f, 1.014f, 0.f);
-	const float HMD_HResolution = 1280.0;
-	const float HMD_VResolution = 800.0;
+	const float HMD_HResolution = hmdWidth;
+	const float HMD_VResolution = hmdHeight;
 	const float HMD_HScreenSize = 0.14976;
 	const float HMD_VScreenSize = HMD_HScreenSize / (HMD_HResolution / HMD_VResolution);
 	const float HMD_InterpupillaryDistance = 0.064;

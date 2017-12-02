@@ -64,8 +64,8 @@ private:
 	
 	//camera
 	bool firstmouse = true;
-	float lastX = startingWidth / 2.f;
-	float lastY = startingHeight / 2.f;
+	float lastX = hmdWidth / 2.f;
+	float lastY = hmdHeight / 2.f;
 
     VkBuffer uniformBuffer;
     VkDeviceMemory uniformBufferMemory;

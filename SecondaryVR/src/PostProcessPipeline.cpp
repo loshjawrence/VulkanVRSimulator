@@ -520,8 +520,10 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
+		
 		const uint32_t camIndex = 0;
-		const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode)};
+		const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode), 
+														hmdWidth, hmdHeight, contextInfo.camera.virtualRenderTargetScaling};
 		vkCmdPushConstants(commandBuffers[i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 
 		VkViewport viewport = {}; VkRect2D scissor = {};
@@ -542,7 +544,8 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
 			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-			const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode) };
+			const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode),
+															hmdWidth, hmdHeight, contextInfo.camera.virtualRenderTargetScaling };
 			vkCmdPushConstants(commandBuffers[i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 			getViewportAndScissor(viewport, scissor, contextInfo, camIndex, contextInfo.camera.vrmode);
 			vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);

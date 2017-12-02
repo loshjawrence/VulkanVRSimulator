@@ -10,15 +10,18 @@
 #include <tuple>
 #include <string>
 
+//const float hmdWidth = 1556;//max on this laptop
+//const float hmdHeight = 972;
+//const float hmdWidth = 320;
+//const float hmdHeight = 200;
+//const float hmdWidth = 640;
+//const float hmdHeight = 400;
+//const float hmdWidth = 1080;
+//const float hmdHeight = 600;
 
-//const float startingWidth = 1080;
-//const float startingHeight = 600;
-const float startingWidth = 1280;
-const float startingHeight = 800;
-//const float startingWidth = 320;
-//const float startingHeight = 200;
-//const float startingWidth = 640;
-//const float startingHeight = 400;
+const float hmdWidth = 1280;
+const float hmdHeight = 800;
+
 const uint32_t HAS_NONE		= 1 << 0; 
 const uint32_t HAS_DIFFUSE	= 1 << 1; 
 const uint32_t HAS_NOR		= 1 << 2; 
@@ -79,18 +82,18 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Fo
 const bool useStencil = true;
 const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_PostProcessPipeline =
 {
-	////passthrough
+	//passthrough
+	//{{"src/shaders/ppPassthrough.vert.spv",
+	//"src/shaders/ppPassthrough.frag.spv"},
+	//1}, //1 is num input sampler images to this pp stage
+	//////passthrough
 	{{"src/shaders/ppPassthrough.vert.spv",
 	"src/shaders/ppStencilHoleFill.frag.spv"},
 	1}, //1 is num input sampler images to this pp stage
-	//passthrough
+	////Barrel/Aberration all in Fragment seems to be the common implementation 
 	{{"src/shaders/ppPassthrough.vert.spv",
-	"src/shaders/ppPassthrough.frag.spv"},
-	1}, //1 is num input sampler images to this pp stage
-//	Barrel/Aberration all in Fragment seems to be the common implementation 
-	//{{"src/shaders/ppPassthrough.vert.spv",
-	//"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
-	//1},
+	"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
+	1},
 	//Barrel/Aberration Mesh (no precalc, done in shaders)
 	//{{"src/shaders/ppBarrelAbMesh2.vert.spv",
 	//"src/shaders/ppBarrelAbMesh.frag.spv"},

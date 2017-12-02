@@ -22,14 +22,13 @@ public:
 	float pitch = 0.f;//about x
 	float fov = 45.f;
 	float virtualRenderTargetScaling = 1.4f;
-	float unScale = 1/1.4f;
 	bool vrmode = false;
 	//DK1 full
 	//float width = 1280;
 	//float height = 800;
 	//DK1 virtual 1.4x(barrel will shrink to down)
-	float width = startingWidth*(vrmode ? virtualRenderTargetScaling : 1.f);
-	float height = startingHeight*(vrmode ? virtualRenderTargetScaling : 1.f);
+	float width = hmdWidth*(vrmode ? virtualRenderTargetScaling : 1.f);
+	float height = hmdHeight*(vrmode ? virtualRenderTargetScaling : 1.f);
 	//HALF modern
 	//float width = 1080;
 	//float height = 600;
