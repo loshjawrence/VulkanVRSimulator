@@ -13,8 +13,7 @@
 VulkanContextInfo::VulkanContextInfo() {
 
 }
-VulkanContextInfo::VulkanContextInfo(GLFWwindow* window, std::string& stencilpath)
-	: stencilpath(stencilpath)
+VulkanContextInfo::VulkanContextInfo(GLFWwindow* window)
 {
 	createInstance();
 	createSurface(window);
@@ -26,6 +25,7 @@ VulkanContextInfo::VulkanContextInfo(GLFWwindow* window, std::string& stencilpat
 	createSwapChainImageViews();
 	determineDepthFormat();
 	camera = Camera();
+	initStencils();
 	createDepthImage();
 }
 
@@ -230,15 +230,27 @@ void VulkanContextInfo::acquireDeviceQueues() {
 	vkGetDeviceQueue(device, presentFamily, 0, &presentQueue);
 }
 
+void VulkanContextInfo::initStencils() {
+	radialDensityMasks.resize(camera.numQualitySettings);
+	for (int i = 0; i < camera.numQualitySettings; ++i) {
+		//radialDensityMasks.push_back(PreMadeStencil(camera.vrScalings[i], StencilType::RadialDensityMask));
+		radialDensityMasks[i] = PreMadeStencil(camera.vrScalings[i], StencilType::RadialDensityMask);
+	}
+}
 
 void VulkanContextInfo::createDepthImage() {
 	determineDepthFormat();
-	//depthImage = VulkanImage(IMAGETYPE::DEPTH, swapChainExtent, depthFormat, *this);
 	VkExtent2D renderTargetExtent;
-	float vrScaleXback = camera.vrmode ? 2.f : 1.f;
-	renderTargetExtent.width = vrScaleXback * static_cast<uint32_t>(camera.width);
-	renderTargetExtent.height = static_cast<uint32_t>(camera.height);
-	depthImage = VulkanImage(IMAGETYPE::DEPTH, renderTargetExtent, depthFormat, *this, camera.vrmode ? stencilpath : std::string(""));
+	if (!camera.vrmode) {
+		renderTargetExtent.width = static_cast<uint32_t>(camera.width);
+		renderTargetExtent.height = static_cast<uint32_t>(camera.height);
+		depthImage = VulkanImage(IMAGETYPE::DEPTH, renderTargetExtent, depthFormat, *this, std::string(""));
+	} else {
+		const int i = camera.qualityIndex;
+		renderTargetExtent.width = static_cast<uint32_t>(radialDensityMasks[i].width);
+		renderTargetExtent.height = static_cast<uint32_t>(radialDensityMasks[i].height);
+		depthImage = VulkanImage(IMAGETYPE::DEPTH, renderTargetExtent, depthFormat, *this, radialDensityMasks[i].filename);
+	}
 }
 
 void VulkanContextInfo::determineDepthFormat() {

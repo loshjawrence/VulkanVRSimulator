@@ -8,7 +8,7 @@
 #include <vector>
 #include "VulkanImage.h"
 #include "Camera.h"
-
+#include "PreMadeStencil.h"
 //This class holds vulkan things that get created once and are used for the duration of the program
 //these things generally won't change across typical vulkan applications
 
@@ -18,6 +18,7 @@ struct PhysicalDeviceSurfaceDetails {
     std::vector<VkPresentModeKHR> presentModes;
 };
 
+class PreMadeStencil;
 
 class VulkanContextInfo {
 public:
@@ -46,6 +47,7 @@ public:
 	//depth image 
 	VkFormat depthFormat;
 	VulkanImage depthImage;
+	std::vector<PreMadeStencil> radialDensityMasks;
 
 	//Camera
 	Camera camera;
@@ -68,7 +70,7 @@ public:
 
 	//TODO: make some of these private
 	VulkanContextInfo();
-	VulkanContextInfo(GLFWwindow* window, std::string& stencil = std::string(""));
+	VulkanContextInfo(GLFWwindow* window);
 	~VulkanContextInfo();
 
 	//surface
@@ -88,8 +90,9 @@ public:
 	void acquireDeviceQueues();
 	
 	//depthstencil format determination
+	void initStencils();
 	void createDepthImage();
-	std::string stencilpath;
+	std::vector<std::string> stencilpath;
 	void determineDepthFormat();
 	VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, 
 		const VkImageTiling tiling, const VkFormatFeatureFlags features) const;

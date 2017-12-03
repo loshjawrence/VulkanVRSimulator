@@ -48,12 +48,12 @@ void VulkanApplication::loadModels() {
 	const int num = 1;
 	const int numMeshesPerStride = 1;
 	std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene(num);
-	for (int i = 0; i < num/numMeshesPerStride; i += numMeshesPerStride) {
+	for (uint32_t i = 0; i < num/numMeshesPerStride; i += numMeshesPerStride) {
 		const float x = static_cast<float>(rng.nextUInt(1));
 		const float y = static_cast<float>(rng.nextUInt(1));
 		const float z = static_cast<float>(rng.nextUInt(1));
-		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
 		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
@@ -73,8 +73,8 @@ void VulkanApplication::loadModels() {
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
 		//defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
-		defaultScene[i] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
@@ -91,11 +91,10 @@ void VulkanApplication::initVulkan() {
 	
 	//make a GLFW window
 	initWindow();
-	//createRadialStencilMask();//no need to generate everytime
-	initStencilsAndAdaptiveQualitySettings();
 
 	//context info holds vulkan things like instance, phys and logical device, swap chain info, depthImage, command pools and queues
-	contextInfo = VulkanContextInfo(window,std::string("radialStencilMask.bmp"));
+	//contextInfo = VulkanContextInfo(window,std::string("radialStencilMask.bmp"));
+	contextInfo = VulkanContextInfo(window);
 	VulkanApplication::setupDebugCallback();
 
 	
@@ -108,12 +107,7 @@ void VulkanApplication::initVulkan() {
 	//contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPass);
 	contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPassPostProcessPresent);
 
-	//defualtMeshes
-	ndcTriangle = Mesh(contextInfo, MESHTYPE::NDCTRIANGLE);//ndc triangle for post processing
-	ndcBarrelMesh[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 0);
-	ndcBarrelMesh[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 1);
-	ndcBarrelMesh_PreCalc[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 0);
-	ndcBarrelMesh_PreCalc[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 1);
+	createPPMeshes();
 
 	//setup all pipelines
 	createPipelines();
@@ -231,10 +225,6 @@ void VulkanApplication::drawFrame() {
 		}
 		postProcessWaitSemaphores = { pipeline.renderFinishedSemaphore };
 	}
-	
-
-
-
 
 	///////////////////////
 	/////// PRESENT////////
@@ -293,7 +283,7 @@ void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& in
 //	renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
 	VkExtent2D renderTargetExent;
 	float vrScaleXback = contextInfo.camera.vrmode ? 2.f : 1.f;
-	renderTargetExent.width = vrScaleXback * static_cast<uint32_t>(contextInfo.camera.width);
+	renderTargetExent.width = static_cast<uint32_t>(vrScaleXback * contextInfo.camera.width);
 	renderTargetExent.height = static_cast<uint32_t>(contextInfo.camera.height);
 	renderPassInfo.renderArea.extent.height = renderTargetExent.height;
 	renderPassInfo.renderArea.extent.width = renderTargetExent.width;
@@ -332,7 +322,7 @@ void VulkanApplication::beginRecordingPrimary(const uint32_t imageIndex) {
 	//renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
 	VkExtent2D renderTargetExent;
 	float vrScaleXback = contextInfo.camera.vrmode ? 2.f : 1.f;
-	renderTargetExent.width = vrScaleXback * static_cast<uint32_t>(contextInfo.camera.width);
+	renderTargetExent.width = static_cast<uint32_t>(vrScaleXback * contextInfo.camera.width);
 	renderTargetExent.height = static_cast<uint32_t>(contextInfo.camera.height);
 	renderPassInfo.renderArea.extent.height = renderTargetExent.height;
 	renderPassInfo.renderArea.extent.width = renderTargetExent.width;
@@ -485,6 +475,22 @@ void VulkanApplication::processInputAndUpdateFPS() {
 			contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
 			recreateSwapChain();
 		}
+		if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS && contextInfo.camera.vrmode) {
+			const bool increaseQuality = false;
+			contextInfo.camera.updateQualitySettings(increaseQuality);
+			contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
+			std::cout << "\nDecreasing Quality to: " << contextInfo.camera.vrScalings[contextInfo.camera.qualityIndex];
+			std::cout << "\nVR virtual Render Target Dim: " << contextInfo.camera.width*2.f << ", " << contextInfo.camera.height;
+			recreateSwapChain();
+		}
+		if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS && contextInfo.camera.vrmode) {
+			const bool increaseQuality = true;
+			contextInfo.camera.updateQualitySettings(increaseQuality);
+			contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
+			std::cout << "\nIncreasing Quality to: " << contextInfo.camera.vrScalings[contextInfo.camera.qualityIndex];
+			std::cout << "\nVR virtual Render Target Dim: " << contextInfo.camera.width*2.f << ", " << contextInfo.camera.height;
+			recreateSwapChain();
+		}
 }
 
 void VulkanApplication::cleanup() {
@@ -528,7 +534,7 @@ void VulkanApplication::createPipelines() {
 
 	for (uint32_t i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
 		int numImageSamplers = 0;
-		for (int k = 1; k < VulkanDescriptor::MAX_IMAGESAMPLERS + 1; ++k) //the first bit is for HAS_NONE so we need to ignore that one
+		for (uint32_t k = 1; k < VulkanDescriptor::MAX_IMAGESAMPLERS + 1; ++k) //the first bit is for HAS_NONE so we need to ignore that one
 			numImageSamplers = (allShaders_ForwardPipeline[i].second & 1 << k) ? numImageSamplers + 1 : numImageSamplers;
 
 		textureMapFlagsToForwardPipelineIndex[i] = allShaders_ForwardPipeline[i].second;//create the mapping based on shaders we have
@@ -553,7 +559,7 @@ void VulkanApplication::createPipelines() {
 
 	//each pp needs inputdescriptor set ofprevious stage
 	postProcessPipelines[0].createInputDescriptors(contextInfo, forwardPipelinesVulkanImages);
-	for (int i = 1; i < postProcessPipelines.size(); ++i) {
+	for (uint32_t i = 1; i < postProcessPipelines.size(); ++i) {
 		//TODO: second are should be determined from tuple element in allShaders_PostProcessPipeline specifying which stage feeds it
 		postProcessPipelines[i].createInputDescriptors(contextInfo, postProcessPipelines[i-1].outputImages);
 	}
@@ -578,16 +584,15 @@ void VulkanApplication::initForwardPipelinesVulkanImagesAndFramebuffers() {
 	forwardPipelinesFramebuffers.resize(contextInfo.swapChainImages.size());
 	VkExtent2D renderTargetExent;
 	float vrScaleXback = contextInfo.camera.vrmode ? 2.f : 1.f;
-	renderTargetExent.width = vrScaleXback * static_cast<uint32_t>(contextInfo.camera.width);
+	renderTargetExent.width = static_cast<uint32_t>(vrScaleXback * contextInfo.camera.width);
 	renderTargetExent.height = static_cast<uint32_t>(contextInfo.camera.height);
-	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+	for (uint32_t i = 0; i < contextInfo.swapChainImages.size(); ++i) {
 		//forwardPipelinesVulkanImages[i].image = contextInfo.swapChainImages[i];
 		//forwardPipelinesVulkanImages[i].imageView = contextInfo.swapChainImageViews[i];
 		//forwardPipelinesVulkanImages[i].extent = contextInfo.swapChainExtent;
 		//forwardPipelinesVulkanImages[i].format = contextInfo.swapChainImageFormat;
 
 		//TODO: if flag is present then use swapchain format otherwise 16F
-		//FOR LATER://these will need to be rebuilt in recreateswapchain?
 		//forwardPipelinesVulkanImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.swapChainExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
 		forwardPipelinesVulkanImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, renderTargetExent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
 
@@ -597,13 +602,11 @@ void VulkanApplication::initForwardPipelinesVulkanImagesAndFramebuffers() {
 	//	forwardPipelinesFramebuffers[i] = contextInfo.swapChainFramebuffers[i];
 	//}
 
-	////FOR LATER://these will need to be rebuild in recreateswapchain?
-	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+	for (uint32_t i = 0; i < contextInfo.swapChainImages.size(); ++i) {
 		VkFramebufferCreateInfo framebufferCreateInfo = {};
 		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferCreateInfo.pNext = NULL;
 
-		//TODO: if last make present otherwise normal post process
 		std::vector<VkImageView> attachments = { forwardPipelinesVulkanImages[i].imageView, contextInfo.depthImage.imageView };
 		framebufferCreateInfo.renderPass = (contextInfo.camera.vrmode && useStencil) ? 
 			allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
@@ -646,10 +649,11 @@ void VulkanApplication::cleanupSwapChain() {
 void VulkanApplication::destroyOffScreenRenderTargets() {
 	for (auto& image : forwardPipelinesVulkanImages) {
 		image.destroyVulkanImage(contextInfo);
+		//depthImage destroyed before this call
 	}
 
 	//dont need to do the last one since it refers to the swap chain
-	for (int i = 0; i < postProcessPipelines.size() - 1; ++i) {
+	for (uint32_t i = 0; i < postProcessPipelines.size() - 1; ++i) {
 		for (auto& image : postProcessPipelines[i].outputImages) {
 			image.destroyVulkanImage(contextInfo);
 		}
@@ -657,7 +661,7 @@ void VulkanApplication::destroyOffScreenRenderTargets() {
 }
 
 void VulkanApplication::freeGlobalCommandBuffers() {
-	for(int i = 0; i < primaryForwardCommandBuffers.size(); ++i) {
+	for(uint32_t i = 0; i < primaryForwardCommandBuffers.size(); ++i) {
 		vkFreeCommandBuffers(contextInfo.device, contextInfo.graphicsCommandPools[0], 1, &primaryForwardCommandBuffers[i]);
 	}
 }
@@ -679,15 +683,15 @@ void VulkanApplication::recreateSwapChain() {
 
 	contextInfo.createSwapChain(window);
 	contextInfo.createSwapChainImageViews();
+
 	//update camera
 	contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
 	contextInfo.createDepthImage();
 
 	allRenderPasses.createRenderPasses(contextInfo);
 
-
 	contextInfo.createSwapChainFramebuffers(allRenderPasses.renderPassPostProcessPresent);
-	allocateGlobalCommandBuffers();
+	allocateGlobalCommandBuffers();//primary for forward render pass
 
 	createPipelines();
 }
@@ -728,7 +732,7 @@ void VulkanApplication::initWindow() {
 
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-	window = glfwCreateWindow(hmdWidth , hmdHeight, "VulkanVR", nullptr, nullptr);
+	window = glfwCreateWindow(hmdWidth, hmdHeight, "VulkanVR", nullptr, nullptr);
 	if (!window) {
 		glfwTerminate();
 		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create glfw window!";
@@ -807,111 +811,111 @@ void VulkanApplication::GLFW_ScrollCallback(GLFWwindow* window, double xoffset, 
 	VulkanApplication* app = reinterpret_cast<VulkanApplication*>(glfwGetWindowUserPointer(window));
 	app->contextInfo.camera.processScrollAndUpdateView(yoffset);
 }
-void VulkanApplication::initStencilsAndAdaptiveQualitySettings() {
 
-	const float stepping = 0.4;
-	for (int i = 0; i < numQualitySettings; ++i) {
-		vrScalings.push_back(MAX_QUALITY - i*stepping);
-		radialDensityMasks.push_back(PreMadeStencil(contextInfo, vrScalings[i], StencilType::RadialDensityMask));
-	}
+void VulkanApplication::createPPMeshes() {
+	ndcTriangle = Mesh(contextInfo, MESHTYPE::NDCTRIANGLE);//ndc triangle for post processing
+	ndcBarrelMesh[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 0);
+	ndcBarrelMesh[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 1);
+	ndcBarrelMesh_PreCalc[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 0);
+	ndcBarrelMesh_PreCalc[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 1);
 }
 
-//TODO: put this in PreMadeStencil Class
-void VulkanApplication::createRadialStencilMask() {
-	const bool pretendStartsVR = true;
-	const float width = pretendStartsVR ? contextInfo.camera.virtualRenderTargetScaling * contextInfo.camera.width : contextInfo.camera.width;
-	const float height = pretendStartsVR ? contextInfo.camera.virtualRenderTargetScaling * contextInfo.camera.height : contextInfo.camera.height;
-
-//	const float vrScaleXback = contextInfo.camera.vrmode ? 2.f : 1.f;
-	//const float width = vrScaleXback * contextInfo.camera.width;
-	//const float height = contextInfo.camera.height;
-	const float invWidth = 1.f / width;
-	const float invHeight = 1.f / height;
-	const float vrMode = 1.f;
-	const float middleRegionRadius = 0.52;//roughly 0.52
-	const float NDCcenterOffset = 0.1425;//0.15 ndc centeer UV center offset 0.0375
-	const float extraRadius = NDCcenterOffset*0.5f;//same as NDCcenterOffset?
-	const std::vector<glm::vec2> ndcCenter = { glm::vec2( NDCcenterOffset, 0.f), 
-											   glm::vec2(-NDCcenterOffset, 0.f) };
-	std::vector<std::vector<uint8_t>>radialDensityMask(3);
-	radialDensityMask[0].resize(width*height);
-	radialDensityMask[1].resize(width*height);
-	radialDensityMask[2].resize(width*height);
-
-	//go through all 2x2 set of pixels (center of group) and determine if that point samples outside of
-	//the UV space for that eye, if so mark as 0 (z-near in vulkan). make a once that is blank for non vr mode?
-	const uint32_t stencilMaskVal = 1;
-	for (int camIndex = 0; camIndex <= 1; ++camIndex) {
-		
-		//x,y correspond to pixel number where 0,0 is upper left in vulkan
-		//loop over entire render area for each eye, if outside of r=1.15 or render area set to stencilMask(need to XOR later to get middle cutout)
-		for (int y = 1; y < height; y+=2) {
-			for (int x = 1; x < width; x+=2) {
-				//if (x == 881 && y == 601 && camIndex == 1) {
-				//if (x == 1367 && y == 1 && camIndex == 1) {
-				//	int adinvow = 1;
-				//}
-
-				//convert to uv
-				glm::vec2 uv(x*invWidth, y*invHeight);
-
-				//convert this uv to ndc based on camIndex
-				glm::vec2 equivNDC = glm::vec2((uv.x - 0.5*camIndex)*4.f - 1.f, uv.y*2.f - 1.f);
-				equivNDC *= glm::vec2(1.f , height/(width*0.5f));//normalize y ndc against half width (eye viewport size) so we get circles and not long vertical ellipses if Y is greater than vr eye viewport x (width/2)
-				float radius = glm::length(equivNDC - ndcCenter[camIndex]);
-
-
-
-				if (radius < (1.f + extraRadius)) {
-					if (radius > middleRegionRadius) {//middle region checkerboard 2x2
-						if ( (((x - 1) & 0x3) == 0) && (((y - 1) & 0x3) == 0) //both divis by 4
-					      || (((x - 3) & 0x3) == 0) && (((y - 3) & 0x3) == 0) ) { //shift the above pattern right and down to get checker
-							//set group of 4 to stencilMask. uv as it is resolves to lower right pixel
-							radialDensityMask[camIndex][(y  )*width + x  ] = stencilMaskVal;//lowerright
-							radialDensityMask[camIndex][(y-1)*width + x  ] = stencilMaskVal;//upperright
-							radialDensityMask[camIndex][(y-1)*width + x-1] = stencilMaskVal;//upperleft
-							radialDensityMask[camIndex][(y  )*width + x-1] = stencilMaskVal;//lowerleft
-						}
-					} else { //center region
-						//set group of 4 to stencilMask. uv as it is resolves to lower right pixel
-						radialDensityMask[camIndex][(y  )*width + x  ] = stencilMaskVal;//lowerright
-						radialDensityMask[camIndex][(y-1)*width + x  ] = stencilMaskVal;//upperright
-						radialDensityMask[camIndex][(y-1)*width + x-1] = stencilMaskVal;//upperleft
-						radialDensityMask[camIndex][(y  )*width + x-1] = stencilMaskVal;//lowerleft
-					}
-				} 
-
-			}//x pixel ID
-		}//y pixel ID
-	}//camIndex
-
-	//XOR values to get result
-	for (int y = 0; y <height; ++y) {
-		for (int x = 0; x < width; ++x) {
-			const int stencilIndex = (y*width + x);
-			uint32_t xorResult = radialDensityMask[0][stencilIndex] ^ radialDensityMask[1][stencilIndex];
-			//radialDensityMask[2][stencilIndex] = radialDensityMask[0][stencilIndex];
-			radialDensityMask[2][stencilIndex] = xorResult;
-		}
-	}
-
-	//stb write to an image to check it out
-	const int NUM_CHANNELS = 4;
-	uint8_t* rgb_image = (uint8_t*)malloc(width * height * NUM_CHANNELS);
-	for (int y = 0; y < height; ++y) {
-		for (int x = 0; x < width; ++x) {
-			const int stencilIndex = (y*width + x);
-			const int redindex = NUM_CHANNELS * stencilIndex;
-			const uint8_t colorVal = 255 * radialDensityMask[2][stencilIndex];
-			rgb_image[redindex + 0] = colorVal;
-			rgb_image[redindex + 1] = colorVal;
-			rgb_image[redindex + 2] = colorVal;
-			rgb_image[redindex + 3] = 255;
-
-		}
-	}
-	std::string fileloc("radialStencilMask.bmp");
-	std::cout << "\nWriting radialStencilMask image to "<< fileloc;
-	stbi_write_bmp(fileloc.c_str(), width, height, NUM_CHANNELS, rgb_image);
-	stbi_image_free(rgb_image);
-}
+////TODO: put this in PreMadeStencil Class
+//void VulkanApplication::createRadialStencilMask() {
+//	const bool pretendStartsVR = true;
+//	const float width = pretendStartsVR ? contextInfo.camera.virtualRenderTargetScaling * contextInfo.camera.width : contextInfo.camera.width;
+//	const float height = pretendStartsVR ? contextInfo.camera.virtualRenderTargetScaling * contextInfo.camera.height : contextInfo.camera.height;
+//
+//	//onst float vrScaleXback = contextInfo.camera.vrmode ? 2.f : 1.f;
+//	//const float width = vrScaleXback * contextInfo.camera.width;
+//	//const float height = contextInfo.camera.height;
+//	const float invWidth = 1.f / width;
+//	const float invHeight = 1.f / height;
+//	const float vrMode = 1.f;
+//	const float middleRegionRadius = 0.52;//roughly 0.52
+//	const float NDCcenterOffset = 0.1425;//0.15 ndc centeer UV center offset 0.0375
+//	const float extraRadius = NDCcenterOffset*0.5f;//same as NDCcenterOffset?
+//	const std::vector<glm::vec2> ndcCenter = { glm::vec2( NDCcenterOffset, 0.f), 
+//											   glm::vec2(-NDCcenterOffset, 0.f) };
+//	std::vector<std::vector<uint8_t>>radialDensityMask(3);
+//	radialDensityMask[0].resize(width*height);
+//	radialDensityMask[1].resize(width*height);
+//	radialDensityMask[2].resize(width*height);
+//
+//	//go through all 2x2 set of pixels (center of group) and determine if that point samples outside of
+//	//the UV space for that eye, if so mark as 0 (z-near in vulkan). make a once that is blank for non vr mode?
+//	const uint32_t stencilMaskVal = 1;
+//	for (int camIndex = 0; camIndex <= 1; ++camIndex) {
+//		
+//		//x,y correspond to pixel number where 0,0 is upper left in vulkan
+//		//loop over entire render area for each eye, if outside of r=1.15 or render area set to stencilMask(need to XOR later to get middle cutout)
+//		for (int y = 1; y < height; y+=2) {
+//			for (int x = 1; x < width; x+=2) {
+//				//if (x == 881 && y == 601 && camIndex == 1) {
+//				//if (x == 1367 && y == 1 && camIndex == 1) {
+//				//	int adinvow = 1;
+//				//}
+//
+//				//convert to uv
+//				glm::vec2 uv(x*invWidth, y*invHeight);
+//
+//				//convert this uv to ndc based on camIndex
+//				glm::vec2 equivNDC = glm::vec2((uv.x - 0.5*camIndex)*4.f - 1.f, uv.y*2.f - 1.f);
+//				equivNDC *= glm::vec2(1.f , height/(width*0.5f));//normalize y ndc against half width (eye viewport size) so we get circles and not long vertical ellipses if Y is greater than vr eye viewport x (width/2)
+//				float radius = glm::length(equivNDC - ndcCenter[camIndex]);
+//
+//
+//
+//				if (radius < (1.f + extraRadius)) {
+//					if (radius > middleRegionRadius) {//middle region checkerboard 2x2
+//						if ( (((x - 1) & 0x3) == 0) && (((y - 1) & 0x3) == 0) //both divis by 4
+//					      || (((x - 3) & 0x3) == 0) && (((y - 3) & 0x3) == 0) ) { //shift the above pattern right and down to get checker
+//							//set group of 4 to stencilMask. uv as it is resolves to lower right pixel
+//							radialDensityMask[camIndex][(y  )*width + x  ] = stencilMaskVal;//lowerright
+//							radialDensityMask[camIndex][(y-1)*width + x  ] = stencilMaskVal;//upperright
+//							radialDensityMask[camIndex][(y-1)*width + x-1] = stencilMaskVal;//upperleft
+//							radialDensityMask[camIndex][(y  )*width + x-1] = stencilMaskVal;//lowerleft
+//						}
+//					} else { //center region
+//						//set group of 4 to stencilMask. uv as it is resolves to lower right pixel
+//						radialDensityMask[camIndex][(y  )*width + x  ] = stencilMaskVal;//lowerright
+//						radialDensityMask[camIndex][(y-1)*width + x  ] = stencilMaskVal;//upperright
+//						radialDensityMask[camIndex][(y-1)*width + x-1] = stencilMaskVal;//upperleft
+//						radialDensityMask[camIndex][(y  )*width + x-1] = stencilMaskVal;//lowerleft
+//					}
+//				} 
+//
+//			}//x pixel ID
+//		}//y pixel ID
+//	}//camIndex
+//
+//	//XOR values to get result
+//	for (int y = 0; y <height; ++y) {
+//		for (int x = 0; x < width; ++x) {
+//			const int stencilIndex = (y*width + x);
+//			uint32_t xorResult = radialDensityMask[0][stencilIndex] ^ radialDensityMask[1][stencilIndex];
+//			//radialDensityMask[2][stencilIndex] = radialDensityMask[0][stencilIndex];
+//			radialDensityMask[2][stencilIndex] = xorResult;
+//		}
+//	}
+//
+//	//stb write to an image to check it out
+//	const int NUM_CHANNELS = 4;
+//	uint8_t* rgb_image = (uint8_t*)malloc(width * height * NUM_CHANNELS);
+//	for (int y = 0; y < height; ++y) {
+//		for (int x = 0; x < width; ++x) {
+//			const int stencilIndex = (y*width + x);
+//			const int redindex = NUM_CHANNELS * stencilIndex;
+//			const uint8_t colorVal = 255 * radialDensityMask[2][stencilIndex];
+//			rgb_image[redindex + 0] = colorVal;
+//			rgb_image[redindex + 1] = colorVal;
+//			rgb_image[redindex + 2] = colorVal;
+//			rgb_image[redindex + 3] = 255;
+//
+//		}
+//	}
+//	std::string fileloc("radialStencilMask.bmp");
+//	std::cout << "\nWriting radialStencilMask image to "<< fileloc;
+//	stbi_write_bmp(fileloc.c_str(), width, height, NUM_CHANNELS, rgb_image);
+//	stbi_image_free(rgb_image);
+//}

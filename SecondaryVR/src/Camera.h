@@ -21,7 +21,15 @@ public:
 	float yaw = -90.f;//about y, looking down local -z
 	float pitch = 0.f;//about x
 	float fov = 45.f;
-	float virtualRenderTargetScaling = 1.4f;
+	
+	//adaptive quality
+	float MAX_QUALITY = 1.4;
+	float virtualRenderTargetScaling = MAX_QUALITY;
+	int qualityIndex = 0;
+	int numQualitySettings = 8;
+	float qualityStepping = 0.1f;
+	std::vector<float> vrScalings;
+
 	bool vrmode = false;
 	//DK1 full
 	//float width = 1280;
@@ -53,6 +61,7 @@ public:
 	void processMouseAndUpdateView(float xoffset, float yoffset);
 	void processScrollAndUpdateView(const float yoffset);
 
+	void updateQualitySettings(const bool increase);
 	void updateVrModeAndCameras();
 
 	void updateDimensions(const VkExtent2D& swapChainExtent);

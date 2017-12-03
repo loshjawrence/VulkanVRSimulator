@@ -1,6 +1,10 @@
 #include "Camera.h"
 
 Camera::Camera() {
+	vrScalings.resize(numQualitySettings);
+	for (int i = 0; i < numQualitySettings; ++i) {
+		vrScalings[i] = MAX_QUALITY - i*qualityStepping;
+	}
 	updateComponentVectorsAndViews(false);
 }
 
@@ -71,12 +75,17 @@ void Camera::processScrollAndUpdateView(const float yoffset) {
 	updateComponentVectorsAndViews(false);
 }
 
+void Camera::updateQualitySettings(const bool increase) {
+	qualityIndex += increase ? -1 : 1;//yes, 0 is index of highest
+	qualityIndex = glm::clamp(qualityIndex, 0, numQualitySettings - 1);
+}
+
 void Camera::updateDimensions(const VkExtent2D& swapChainExtent) {
 	const float scale = vrmode ? 0.5f : 1.f;
-	width = swapChainExtent.width * scale * (vrmode ? virtualRenderTargetScaling : 1.f);
-	height = swapChainExtent.height * (vrmode ? virtualRenderTargetScaling : 1.f);
-	//width = swapChainExtent.width * scale * (false ? virtualRenderTargetScaling : 1.f);
-	//height = swapChainExtent.height * (false ? virtualRenderTargetScaling : 1.f);
+	width = swapChainExtent.width * scale * (vrmode ? vrScalings[qualityIndex] : 1.f);
+	height = swapChainExtent.height * (vrmode ? vrScalings[qualityIndex] : 1.f);
+	//width = swapChainExtent.width * scale * (false ? vrScalings[qualityIndex] : 1.f);
+	//height = swapChainExtent.height * (false ? vrScalings[qualityIndex] : 1.f);
 	updatePerspectiveProjection();
 }
 

@@ -39,7 +39,7 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 # Vulkan Performance Things
 * To limit context switches (changing shaders, mesh info, etc):
 * Sift shader calls into secondary command buffers and combine into one primary so there's only one shader switch for each shader that is needed in the render pass
-* use push constants for dynamic things (model matrix, time, bit field flags)
+* use push constants for per draw call dynamic things (model matrix, bit field flags)
 * have the UBO use size 2 array for the viewproj of each eye, set the viewport state to dynamic, use push constants to view port switching commands to render in one render pass. (single scene traversal still 2 draw calls)
 * multithread your command building (use secondary command buffers), assemble into primary, submit.
 * Reduce command buffer count, number of render passes done to build a frame

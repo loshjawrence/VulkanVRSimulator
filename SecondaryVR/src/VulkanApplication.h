@@ -15,7 +15,6 @@
 #include "PostProcessPipeline.h"
 #include "VulkanImage.h"
 #include "VulkanBuffer.h"
-#include "PreMadeStencil.h"
 #include "Model.h"
 #include "../dependencies/pcg32.h"
 
@@ -70,9 +69,6 @@ private:
 	std::vector<VkCommandPool> computeCommandPools;
 	std::vector<VkCommandBuffer> primaryForwardCommandBuffers;
 
-	int numQualitySettings = 1;
-	std::vector<float> vrScalings;
-	std::vector<PreMadeStencil> radialDensityMasks;
 
 	
 	//camera
@@ -111,7 +107,7 @@ private:
 	VkSemaphore forwardRenderFinishedSemaphore;
 
 private:
-	void createRadialStencilMask();
+	//void createRadialStencilMask();
 	void initWindow();
 	void initVulkan();
 	void mainLoop();
@@ -124,8 +120,6 @@ private:
 	void updateUniformBuffer();
 	void initForwardPipelinesVulkanImagesAndFramebuffers();
 
-	//adaptive quality and stencils
-	void initStencilsAndAdaptiveQualitySettings();
 
 	//drawing
 	void drawFrame();
@@ -136,6 +130,7 @@ private:
 
 	//helper
 	uint32_t getForwardPipelineIndexFromTextureMapFlags(const uint32_t textureMapFlags);
+	void VulkanApplication::createPPMeshes();
 
 	//callbacks
 	void setupDebugCallback();

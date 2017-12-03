@@ -21,7 +21,6 @@
 
 const float hmdWidth = 1280;
 const float hmdHeight = 800;
-const float MAX_QUALITY = 1.4;
 
 const uint32_t HAS_NONE		= 1 << 0; 
 const uint32_t HAS_DIFFUSE	= 1 << 1; 
