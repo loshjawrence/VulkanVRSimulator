@@ -21,6 +21,7 @@
 
 const float hmdWidth = 1280;
 const float hmdHeight = 800;
+const float MAX_QUALITY = 1.4;
 
 const uint32_t HAS_NONE		= 1 << 0; 
 const uint32_t HAS_DIFFUSE	= 1 << 1; 
@@ -82,25 +83,29 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Fo
 const bool useStencil = true;
 const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_PostProcessPipeline =
 {
-	//passthrough
+	////passthrough
 	//{{"src/shaders/ppPassthrough.vert.spv",
 	//"src/shaders/ppPassthrough.frag.spv"},
 	//1}, //1 is num input sampler images to this pp stage
-	//////passthrough
+
+	////STENCIL HOLE FILL
 	{{"src/shaders/ppPassthrough.vert.spv",
 	"src/shaders/ppStencilHoleFill.frag.spv"},
 	1}, //1 is num input sampler images to this pp stage
-	////Barrel/Aberration all in Fragment seems to be the common implementation 
+
+	//Barrel/Aberration PRECALC MESH
+//	{{"src/shaders/ppBarrelAbMeshPreCalc.vert.spv",
+//	"src/shaders/ppBarrelAbMeshPreCalc.frag.spv"},
+//	1},
+
+	//////Barrel/Aberration all in FRAG 
 	{{"src/shaders/ppPassthrough.vert.spv",
 	"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
 	1},
-	//Barrel/Aberration Mesh (no precalc, done in shaders)
+
+	//Barrel/Aberration SHADER MESH (no precalc, done in shaders)
 	//{{"src/shaders/ppBarrelAbMesh2.vert.spv",
 	//"src/shaders/ppBarrelAbMesh.frag.spv"},
-	//1},
-	//Barrel/Aberration PreCalc Mesh 
-	//{{"src/shaders/ppBarrelAbMeshPreCalc.vert.spv",
-	//"src/shaders/ppBarrelAbMeshPreCalc.frag.spv"},
 	//1},
 };
 //std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene;

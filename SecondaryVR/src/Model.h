@@ -18,12 +18,6 @@
 
 #include "Mesh.h"
 
-struct UniformBufferObject2 {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
-};
-
 class Model {
 public:
 	std::vector<Texture> mTexturesLoaded;//models will likely use textures more that once, only load it once
@@ -43,12 +37,10 @@ public:
 	~Model();
 	Model(const std::string& path, uint32_t isDynamic, const glm::mat4& model, VulkanContextInfo& contextInfo, 
 		const VkBuffer& ubo, const VkDeviceMemory& uboMemory, const uint32_t sizeofUBOstruct);
-	Model(const std::string& path, const bool isDyamic, const glm::mat4& modelMatrix, VulkanContextInfo& contextInfo);
 
 	void loadModel(const std::string& path, const VulkanContextInfo& contextInfo);
 	void createDescriptorsForMeshes(const VulkanContextInfo& contextInfo, 
 		const VkBuffer& ubo, const uint32_t sizeofUBOstruct);
-	void createDescriptorsForMeshes(const VulkanContextInfo& contextInfo);
 
 	void destroyVulkanHandles(const VulkanContextInfo& contextInfo);
 

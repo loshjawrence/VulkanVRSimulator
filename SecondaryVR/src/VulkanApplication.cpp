@@ -21,6 +21,7 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h>
 
+
 #include "GlobalSettings.h"
 #include "Utils.h"
 
@@ -61,6 +62,11 @@ void VulkanApplication::loadModels() {
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.5f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/cerberus_maximov/source/Cerberus_LP.FBX.fbx"), 1,
 			//glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
+
+//		defaultScene[i] = { std::string("res/objects/cyborg/cyborg.obj"), 1,
+//			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(0, 0, 0)) };
+//		defaultScene[i] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
+//			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.25f)),glm::vec3(0, 0, 0)) };
 		//defaultScene[i+1] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+2] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
@@ -85,7 +91,8 @@ void VulkanApplication::initVulkan() {
 	
 	//make a GLFW window
 	initWindow();
-	createRadialStencilMask();//no need to generate everytime
+	//createRadialStencilMask();//no need to generate everytime
+	initStencilsAndAdaptiveQualitySettings();
 
 	//context info holds vulkan things like instance, phys and logical device, swap chain info, depthImage, command pools and queues
 	contextInfo = VulkanContextInfo(window,std::string("radialStencilMask.bmp"));
@@ -166,7 +173,7 @@ void VulkanApplication::drawFrame() {
 
 
 
-	//////Primary bufer recorded directly with unsorted pipelines
+	////PRIMARY BUFER RECORDED DIRECTLY WITH UNSORTED PIPELINES
 	beginRecordingPrimary(imageIndex);
 	for (Model& model : models) {
 		//TODO: record only visible meshes
@@ -378,6 +385,10 @@ void VulkanApplication::updateUniformBuffer() {
 	ubo.view[1] = contextInfo.camera.view[1];
 	ubo.proj = contextInfo.camera.proj;
 	ubo.proj[1][1] *= -1;//need for correct z-buffer order
+	ubo.viewProj[0] = ubo.proj * contextInfo.camera.view[0];
+	ubo.viewProj[1] = ubo.proj * contextInfo.camera.view[1];
+	ubo.viewPos = glm::vec4(contextInfo.camera.camPos, 1.f);
+	ubo.lightPos = glm::vec4(100.f, 100.f, 100.f, 1.f);
 	ubo.time = time;
 
 	void* data;
@@ -796,7 +807,16 @@ void VulkanApplication::GLFW_ScrollCallback(GLFWwindow* window, double xoffset, 
 	VulkanApplication* app = reinterpret_cast<VulkanApplication*>(glfwGetWindowUserPointer(window));
 	app->contextInfo.camera.processScrollAndUpdateView(yoffset);
 }
+void VulkanApplication::initStencilsAndAdaptiveQualitySettings() {
 
+	const float stepping = 0.4;
+	for (int i = 0; i < numQualitySettings; ++i) {
+		vrScalings.push_back(MAX_QUALITY - i*stepping);
+		radialDensityMasks.push_back(PreMadeStencil(contextInfo, vrScalings[i], StencilType::RadialDensityMask));
+	}
+}
+
+//TODO: put this in PreMadeStencil Class
 void VulkanApplication::createRadialStencilMask() {
 	const bool pretendStartsVR = true;
 	const float width = pretendStartsVR ? contextInfo.camera.virtualRenderTargetScaling * contextInfo.camera.width : contextInfo.camera.width;

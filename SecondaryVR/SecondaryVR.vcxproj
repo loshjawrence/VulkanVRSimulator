@@ -136,6 +136,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\PreMadeStencil.cpp" />
     <ClCompile Include="src\PostProcessPipeline.cpp" />
     <ClCompile Include="src\Model.cpp" />
     <ClCompile Include="src\Mesh.cpp" />
@@ -151,6 +152,7 @@
     <ClCompile Include="src\VulkanApplication.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\PreMadeStencil.h" />
     <ClInclude Include="src\PostProcessPipeline.h" />
     <ClInclude Include="src\Model.h" />
     <ClInclude Include="src\Mesh.h" />

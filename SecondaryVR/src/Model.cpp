@@ -16,17 +16,9 @@ Model::Model(const std::string& path, const uint32_t isDynamic, const glm::mat4&
 	createDescriptorsForMeshes(contextInfo, ubo, sizeofUBOstruct);
 }
 
-Model::Model(const std::string& path, const bool isDyamic, const glm::mat4& modelMatrix, VulkanContextInfo& contextInfo)
-	:path(path), isDynamic(isDynamic), modelMatrix(modelMatrix)
-{
-	VulkanBuffer::createUniformBuffer(contextInfo, sizeof(UniformBufferObject2), uniformBuffer, uniformBufferMemory);
-	loadModel(path, contextInfo);
-	createDescriptorsForMeshes(contextInfo);
-}
-
 void Model::loadModel(const std::string& path, const VulkanContextInfo& contextInfo) {
 	Assimp::Importer importer;
-	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_GenSmoothNormals | aiProcess_ValidateDataStructure);
+	const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace | aiProcess_JoinIdenticalVertices |  aiProcess_GenSmoothNormals | aiProcess_ValidateDataStructure);
 	if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
 		std::cout << "ERROR::ASSIMP:: " << importer.GetErrorString() << std::endl;
 		return;
@@ -172,11 +164,7 @@ void Model::createDescriptorsForMeshes(const VulkanContextInfo& contextInfo,
 	}
 
 }
-void Model::createDescriptorsForMeshes(const VulkanContextInfo& contextInfo) {
-	for (auto& mesh : mMeshes) {
-		mesh.createDescriptor(contextInfo, uniformBuffer, sizeof(UniformBufferObject2));
-	}
-}
+
 void Model::destroyVulkanHandles(const VulkanContextInfo& contextInfo) {
 	for (auto& mesh : mMeshes) {
 		for (auto& texture : mesh.mTextures) {

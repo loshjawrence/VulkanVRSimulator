@@ -15,8 +15,10 @@
 #include "PostProcessPipeline.h"
 #include "VulkanImage.h"
 #include "VulkanBuffer.h"
+#include "PreMadeStencil.h"
 #include "Model.h"
 #include "../dependencies/pcg32.h"
+
 
 #include "Camera.h"
 
@@ -31,7 +33,14 @@ namespace std {
 struct UniformBufferObject {
 	glm::mat4 view[2];
     glm::mat4 proj;
+	glm::mat4 viewProj[2];
+	glm::vec4 viewPos;//dont use vec3 due to the layout rules: https://www.khronos.org/registry/vulkan/specs/1.0/html/vkspec.html#interfaces-resources-layout 
+	glm::vec4 lightPos;
 	float time;
+};
+
+enum class QualitySettings {
+	HIGH = 0
 };
 
 class VulkanApplication {
@@ -60,6 +69,10 @@ private:
 	std::vector<VkCommandPool> graphicsCommandPools;
 	std::vector<VkCommandPool> computeCommandPools;
 	std::vector<VkCommandBuffer> primaryForwardCommandBuffers;
+
+	int numQualitySettings = 1;
+	std::vector<float> vrScalings;
+	std::vector<PreMadeStencil> radialDensityMasks;
 
 	
 	//camera
@@ -110,6 +123,9 @@ private:
 	void loadModels();
 	void updateUniformBuffer();
 	void initForwardPipelinesVulkanImagesAndFramebuffers();
+
+	//adaptive quality and stencils
+	void initStencilsAndAdaptiveQualitySettings();
 
 	//drawing
 	void drawFrame();
