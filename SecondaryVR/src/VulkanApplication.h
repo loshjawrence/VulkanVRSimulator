@@ -87,6 +87,9 @@ private:
 	std::vector<VulkanImage> forwardPipelinesVulkanImages;
 	VulkanRenderPass allRenderPasses;
 	std::vector<PostProcessPipeline> postProcessPipelines;
+
+
+	//post process meshes
 	Mesh ndcTriangle;
 	Mesh ndcBarrelMesh[2];
 	Mesh ndcBarrelMesh_PreCalc[2];//0 left, 1 right

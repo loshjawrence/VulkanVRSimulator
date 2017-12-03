@@ -451,46 +451,84 @@ void VulkanApplication::processInputAndUpdateFPS() {
 	time = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - startTime).count() / 1000.0f;
 
 
-		float currentFrame = glfwGetTime();
-		deltaTime = currentFrame - lastFrame;
-		lastFrame = currentFrame;
-		updateFPS();
-		if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-			glfwSetWindowShouldClose(window, true);
+	float currentFrame = glfwGetTime();
+	deltaTime = currentFrame - lastFrame;
+	lastFrame = currentFrame;
+	updateFPS();
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+		glfwSetWindowShouldClose(window, true);
 
-		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::FORWARD, deltaTime);
-		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::BACKWARD, deltaTime);
-		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::LEFT, deltaTime);
-		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::RIGHT, deltaTime);
-		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::UP, deltaTime);
-		if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-			contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::DOWN, deltaTime);
-		if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
-			contextInfo.camera.updateVrModeAndCameras();
-			contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
-			recreateSwapChain();
-		}
-		if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS && contextInfo.camera.vrmode) {
-			const bool increaseQuality = false;
-			contextInfo.camera.updateQualitySettings(increaseQuality);
-			contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
-			std::cout << "\nDecreasing Quality to: " << contextInfo.camera.vrScalings[contextInfo.camera.qualityIndex];
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::FORWARD, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::BACKWARD, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::LEFT, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::RIGHT, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
+		contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::UP, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
+		contextInfo.camera.processKeyboardAndUpdateView(MovementDirection::DOWN, deltaTime);
+	if (glfwGetKey(window, GLFW_KEY_V) == GLFW_PRESS) {
+		contextInfo.camera.updateVrModeAndCameras();
+		contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
+		recreateSwapChain();
+	}
+	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS && contextInfo.camera.vrmode && contextInfo.camera.qualityEnabled) {
+		const bool increaseQuality = false;
+		const int indexBefore = contextInfo.camera.qualityIndex;
+		contextInfo.camera.updateQualitySettings(increaseQuality);
+		contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
+		const int indexAfter = contextInfo.camera.qualityIndex;
+		if (indexBefore != indexAfter) {
+			std::cout << "\nDecreased Quality to: " << contextInfo.camera.vrScalings[contextInfo.camera.qualityIndex];
 			std::cout << "\nVR virtual Render Target Dim: " << contextInfo.camera.width*2.f << ", " << contextInfo.camera.height;
 			recreateSwapChain();
 		}
-		if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS && contextInfo.camera.vrmode) {
-			const bool increaseQuality = true;
-			contextInfo.camera.updateQualitySettings(increaseQuality);
-			contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
-			std::cout << "\nIncreasing Quality to: " << contextInfo.camera.vrScalings[contextInfo.camera.qualityIndex];
+	}
+	if (glfwGetKey(window, GLFW_KEY_X) == GLFW_PRESS && contextInfo.camera.vrmode && contextInfo.camera.qualityEnabled) {
+		const bool increaseQuality = true;
+		const int indexBefore = contextInfo.camera.qualityIndex;
+		contextInfo.camera.updateQualitySettings(increaseQuality);
+		contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
+		const int indexAfter = contextInfo.camera.qualityIndex;
+		if (indexBefore != indexAfter) {
+			std::cout << "\nIncreased Quality to: " << contextInfo.camera.vrScalings[contextInfo.camera.qualityIndex];
 			std::cout << "\nVR virtual Render Target Dim: " << contextInfo.camera.width*2.f << ", " << contextInfo.camera.height;
 			recreateSwapChain();
 		}
+	}
+	
+	//TODO:poor performance, for now just make it key toggle. to make this smooth you would 
+	//need to make a set of render target images/framebuffers and static command buffers (post process) for each setting
+	//if (contextInfo.camera.vrmode && contextInfo.camera.qualityEnabled) {
+	//	const float timeRatio = deltaTime*1000.f / contextInfo.camera.targetFrameTime_ms;
+	//	if (timeRatio > 0.9f) { //turn down settings
+	//		const bool increaseQuality = false;
+	//		const int indexBefore = contextInfo.camera.qualityIndex;
+	//		contextInfo.camera.updateQualitySettings(increaseQuality);
+	//		contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
+	//		const int indexAfter = contextInfo.camera.qualityIndex;
+	//		if (indexBefore != indexAfter) {
+	//			//std::cout << "\nDecreased Quality to: " << contextInfo.camera.vrScalings[contextInfo.camera.qualityIndex];
+	//			//std::cout << "\nVR virtual Render Target Dim: " << contextInfo.camera.width*2.f << ", " << contextInfo.camera.height;
+	//			recreateSwapChain();
+	//		}
+	//	} else if (timeRatio > 0.80) {//stay here
+	//	} else { //turn up settings
+	//		const bool increaseQuality = true;
+	//		const int indexBefore = contextInfo.camera.qualityIndex;
+	//		contextInfo.camera.updateQualitySettings(increaseQuality);
+	//		contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
+	//		const int indexAfter = contextInfo.camera.qualityIndex;
+	//		if (indexBefore != indexAfter) {
+	//			//std::cout << "\nIncreased Quality to: " << contextInfo.camera.vrScalings[contextInfo.camera.qualityIndex];
+	//			//std::cout << "\nVR virtual Render Target Dim: " << contextInfo.camera.width*2.f << ", " << contextInfo.camera.height;
+	//			recreateSwapChain();
+	//		}
+	//	}
+	//}
 }
 
 void VulkanApplication::cleanup() {

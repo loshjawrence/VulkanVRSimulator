@@ -327,3 +327,4 @@ void Mesh::createNDCBarrelMeshPreCalc(const VulkanContextInfo& contextInfo, cons
 	VulkanBuffer::createVertexBuffer(contextInfo, mVertices, vertexBuffer, vertexBufferMemory);
 	VulkanBuffer::createIndexBuffer(contextInfo, mIndices, indexBuffer, indexBufferMemory);
 }
+

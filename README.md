@@ -34,7 +34,23 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 ![](SecondaryVR/img/all.png)
 ![](SecondaryVR/img/noBarrelNoStencil.png)
 ![](SecondaryVR/img/noBarrelStencilHoleFill.png)
+![](SecondaryVR/img/radialdensitymask.png)
+![](SecondaryVR/img/radialDensityMaskingWithTAA.png)
 
+
+# Adaptive Quality Filtering
+* see https://www.youtube.com/watch?v=DdL3WC_oBO4
+* Async time warp and space warp are unpleasent experiences for the user, should really only be last resort. If you're using it to maintain frame rate you're creating a really uncomfortable VR experience.
+* Use Adaptive quality filtering to detect when user is turning head towards an expensive view. If the last frame time starts go above some target threshold then begin to turn down settings (MSAA and virtual render target scaling (the render target size pre-barrel distortion))
+* Can probably avoid async time and space warp altogether.
+![](SecondaryVR/img/adaptiveQuality.bmp)
+![](SecondaryVR/img/adaptiveQualitySettings.png)
+** Resolution scale 1.5<br />
+![](SecondaryVR/img/adaptiveQuality1.5.png)
+** Resolution scale 1.0<br />
+![](SecondaryVR/img/adaptiveQuality1.0.png)
+** Resolution scale 0.5<br />
+![](SecondaryVR/img/adaptiveQuality0.5.png)
 
 # Vulkan Performance Things
 * To limit context switches (changing shaders, mesh info, etc):

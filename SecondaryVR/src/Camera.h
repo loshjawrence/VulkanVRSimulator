@@ -24,6 +24,7 @@ public:
 	
 	//adaptive quality
 	bool qualityEnabled = true;
+	float targetFrameTime_ms = 2.f;
 	float MAX_QUALITY = 1.5;//work around for odd scaling issue in holefill shader(
 	float virtualRenderTargetScaling = MAX_QUALITY;
 	int qualityIndex = 0;
