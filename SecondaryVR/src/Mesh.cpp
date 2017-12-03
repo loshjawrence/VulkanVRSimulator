@@ -157,6 +157,7 @@ void Mesh::createNDCBarrelMesh(const VulkanContextInfo& contextInfo, const uint3
 }
 
 
+//takes absolute screen uv and gives abosolute screen sampling uv for rgb channels
 void Mesh::getSourceUV(const uint32_t camIndex, const glm::vec2& oTexCoord,
 	glm::vec2& out_tcRed, glm::vec2& out_tcGreen, glm::vec2& out_tcBlue) {
 

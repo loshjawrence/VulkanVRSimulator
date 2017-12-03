@@ -78,6 +78,7 @@ void Camera::processScrollAndUpdateView(const float yoffset) {
 void Camera::updateQualitySettings(const bool increase) {
 	qualityIndex += increase ? -1 : 1;//yes, 0 is index of highest
 	qualityIndex = glm::clamp(qualityIndex, 0, numQualitySettings - 1);
+
 }
 
 void Camera::updateDimensions(const VkExtent2D& swapChainExtent) {

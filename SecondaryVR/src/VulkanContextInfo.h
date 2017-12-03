@@ -48,6 +48,7 @@ public:
 	VkFormat depthFormat;
 	VulkanImage depthImage;
 	std::vector<PreMadeStencil> radialDensityMasks;
+	std::vector<PreMadeStencil> preCalcBarrelSamplingMasks;
 
 	//Camera
 	Camera camera;

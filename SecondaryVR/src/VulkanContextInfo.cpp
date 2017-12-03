@@ -232,9 +232,10 @@ void VulkanContextInfo::acquireDeviceQueues() {
 
 void VulkanContextInfo::initStencils() {
 	radialDensityMasks.resize(camera.numQualitySettings);
+	preCalcBarrelSamplingMasks.resize(camera.numQualitySettings);
 	for (int i = 0; i < camera.numQualitySettings; ++i) {
-		//radialDensityMasks.push_back(PreMadeStencil(camera.vrScalings[i], StencilType::RadialDensityMask));
-		radialDensityMasks[i] = PreMadeStencil(camera.vrScalings[i], StencilType::RadialDensityMask);
+		radialDensityMasks[i]			= PreMadeStencil(camera.vrScalings[i], StencilType::RadialDensityMask);
+		preCalcBarrelSamplingMasks[i]	= PreMadeStencil(camera.vrScalings[i], StencilType::PreCalcBarrelSamplingMask);
 	}
 }
 
