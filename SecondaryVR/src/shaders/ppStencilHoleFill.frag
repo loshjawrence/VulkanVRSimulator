@@ -32,11 +32,6 @@ void reshadeRenderedChecker(const ivec2 pixel, const vec2 invWandH);
 void main() {
     const int vrMode = (PushConstant.toggleFlags >> vrBit) & 1;
     const int camIndex = (PushConstant.toggleFlags >> camBit) & 1;
-    const float width = PushConstant.hmdWidth * PushConstant.VRvirtualScaling;
-    const float height = PushConstant.hmdHeight * PushConstant.VRvirtualScaling;
-    const float invWidth = 1.f / width;
-    const float invHeight = 1.f / height;
-    const vec2 invWandH = vec2(invWidth, invHeight);
 
     //if vrMode, shrink UV.x by half and shift to sample one eye
     vec2 fragTexCoord = fragUV;
@@ -45,17 +40,25 @@ void main() {
     //just sample normally if not vrMode
     if(0 == vrMode) { outColor = texture(texSampler, fragTexCoord); return;}
 
-    const ivec2 pixel = ivec2(int(gl_FragCoord.x), int(gl_FragCoord.y));
+    //else fill holes
+    //POSSIBLE SPIR-V COMPILER BUG: when width and height aren't const bad things happen for the odd cases
+    const int width = int(PushConstant.hmdWidth * PushConstant.VRvirtualScaling);
+    const int height = int(PushConstant.hmdHeight * PushConstant.VRvirtualScaling);
+
+	//THERES AN ISSUE WHEN WIDTH OR HEIGHT IS ODD, DIFFICULTY LINING UP UV WITH CORRESPONDING PIXEL IN THE HOLE FILLING?
+//    const int samplingWidth  = ((width & 1) == 1) ? width+1 : width;
+//    const int samplingHeight = ((height & 1) == 1) ? height+1 : height;
+//    const vec2 invWandH = vec2(1.f/samplingWidth, 1.f/samplingHeight);
+ 
+    const float invWidth = 1.f / width;
+    const float invHeight = 1.f / height;
+    const vec2 invWandH = vec2(invWidth, invHeight);
+
+
+    const ivec2 pixel = ivec2(gl_FragCoord.x, gl_FragCoord.y);
     ivec2 groupPixel = pixel;
     groupPixel.x = ((groupPixel.x & 1) == 1) ? groupPixel.x : groupPixel.x+1;
     groupPixel.y = ((groupPixel.y & 1) == 1) ? groupPixel.y : groupPixel.y+1;
-
-//    if((int(groupPixel.x) & 1) == 1){
-//        outColor = vec4(0.f,0.f,0.f,1.f); return;
-//    } else {
-//        outColor = vec4(1.f,1.f,1.f,1.f); return;
-//    }
-
 
     //UV for the 2x2 pixel quad in which it resides
     const vec2 groupUV = vec2(groupPixel.x*invWidth, groupPixel.y*invHeight);
@@ -65,6 +68,11 @@ void main() {
     //if Y is greater/less than vr eye viewport x (rendertarget width/2)
     equivNDC *= vec2(1.f , height/(width*0.5f)); 
     const float radius = length(equivNDC - ndcCenter[camIndex]);
+
+
+    //////CORRECTION
+    const float correction = -0.01f;
+
 
     if (radius < (1.f + extraRadius)) {
         if (radius > middleRegionRadius) {//middle region checkerboard 2x2

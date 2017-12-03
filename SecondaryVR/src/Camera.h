@@ -23,11 +23,12 @@ public:
 	float fov = 45.f;
 	
 	//adaptive quality
-	float MAX_QUALITY = 1.4;
+	bool qualityEnabled = true;
+	float MAX_QUALITY = 1.5;//work around for odd scaling issue in holefill shader(
 	float virtualRenderTargetScaling = MAX_QUALITY;
 	int qualityIndex = 0;
-	int numQualitySettings = 8;
-	float qualityStepping = 0.1f;
+	int numQualitySettings = 3;
+	float qualityStepping = 0.5f;
 	std::vector<float> vrScalings;
 
 	bool vrmode = false;

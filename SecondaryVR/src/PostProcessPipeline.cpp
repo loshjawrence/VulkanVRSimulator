@@ -433,33 +433,6 @@ void PostProcessPipeline::getViewportAndScissor(VkViewport& outViewport, VkRect2
 		outScissor.offset = { 0, 0 };
 		outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
 	}
-
-	//outViewport.minDepth = 0.0f;
-	//outViewport.maxDepth = 1.0f;
-
-	//if (vrmode) {
-	//	outViewport.width = (float)contextInfo.swapChainExtent.width * 0.5f;
-	//	outViewport.height = (float)contextInfo.swapChainExtent.height;
-	//	if (camIndex == 0) {
-	//		outViewport.x = 0.0f;
-	//		outViewport.y = 0.0f;
-	//		outScissor.offset = { (int32_t )outViewport.x,		(int32_t )outViewport.y };
-	//		outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
-	//	} else {
-	//		outViewport.x = outViewport.width;
-	//		outViewport.y = 0.0f;
-	//		outScissor.offset = { (int32_t )outViewport.x,		(int32_t )outViewport.y };
-	//		outScissor.extent = { (uint32_t)outViewport.width,	(uint32_t)outViewport.height };
-	//	}
-	//} else {
-	//	outViewport.x = 0.0f;
-	//	outViewport.y = 0.0f;
-	//	outViewport.width = (float)contextInfo.swapChainExtent.width;
-	//	outViewport.height = (float)contextInfo.swapChainExtent.height;
-
-	//	outScissor.offset = { 0, 0 };
-	//	outScissor.extent = contextInfo.swapChainExtent;
-	//}
 }
 
 void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& contextInfo, 
