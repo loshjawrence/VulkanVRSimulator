@@ -25,14 +25,11 @@ public:
 	//adaptive quality
 	bool qualityEnabled = true;
 	float targetFrameTime_ms = 2.f;
-	//float MAX_QUALITY = 0.599999964f;//work around for odd scaling issue in holefill shader due to odd dims for x and y at certain intermediate scalings
 	float MAX_QUALITY = 1.4;//work around for odd scaling issue in holefill shader due to odd dims for x and y at certain intermediate scalings
 
-	//float virtualRenderTargetScaling = MAX_QUALITY;
-
 	int qualityIndex = 0;
-	int numQualitySettings = 8;
-	float qualityStepping = 0.1f;
+	int numQualitySettings = 2;
+	float qualityStepping = 0.9f;
 	std::vector<float> vrScalings;
 
 	bool vrmode = false;
@@ -42,7 +39,8 @@ public:
 	//DK1 virtual 1.4x(barrel will shrink to down)
 	uint32_t width = hmdWidth;
 	uint32_t height = hmdHeight;
-	VkExtent2D renderTargetExtent = {width, height};
+	std::vector<VkExtent2D> renderTargetExtent;
+	VkExtent2D renderTargetExtentNoVR;
 	//HALF modern
 	//float width = 1080;
 	//float height = 600;

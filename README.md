@@ -37,6 +37,18 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 ![](SecondaryVR/img/radialdensitymask.png)
 ![](SecondaryVR/img/radialDensityMaskingWithTAA.png)
 
+# Optimizing Stencil Hole Fill
+* Remove all tex fetches from branches(needed for determining uv coords of fetches based on: 1. was it a ignored quad or not, 2: location withing quad), prefetch at the top of shader
+* If you're not seeing benefits you'll see additional savings the more expensive your pixel shading is
+
+# Is The Barrel Sampling that Dense? 
+* Yes, I thought it would be possible to just precalculate a stencil that masked out the places where the barrel filter wouldn't be sampling
+* The motivation for this was the expensive hole filling in radial density masking. 
+** All color channels single pixel sample<br />
+![](SecondaryVR/img/preCalcBarrelSamplingMaskActualPixelsThatWillBeSampled.png)
+** All color channels sample pixel quad <br />
+![](SecondaryVR/img/preCalcBarrelSamplingMaskActualPixelsThatWIllBeSampled_TheirQuads.png)
+
 
 # Adaptive Quality Filtering
 * see https://www.youtube.com/watch?v=DdL3WC_oBO4

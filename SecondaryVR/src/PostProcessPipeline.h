@@ -38,13 +38,12 @@ public:
 	VkPipeline graphicsPipeline;
 	VkPipelineLayout pipelineLayout;
 
-	std::vector<VkCommandBuffer> commandBuffers;
+	std::vector< std::vector<VkCommandBuffer> > commandBuffers;
 	std::vector<VkCommandPool> commandPools;
 
-	//NEW
-	std::vector<VulkanImage> outputImages;//give to this stage's framebuffers and next stage's inputDescriptors
-	std::vector<VkFramebuffer> framebuffers;
-	std::vector<VulkanDescriptor> inputDescriptors;
+	std::vector< std::vector<VulkanImage> > outputImages;//give to this stage's framebuffers and next stage's inputDescriptors
+	std::vector< std::vector<VkFramebuffer> > framebuffers;
+	std::vector< std::vector<VulkanDescriptor> > inputDescriptors;
 
 	VkSemaphore imageAvailableSemaphore;
 	VkSemaphore renderFinishedSemaphore;
@@ -66,7 +65,7 @@ public:
 	void createOutputImages(const VulkanContextInfo& contextInfo);
 	void addCommandPools(const VulkanContextInfo& contextInfo, const uint32_t num);
 	void createFramebuffers(const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass);
-	void createInputDescriptors(const VulkanContextInfo& contextInfo, const std::vector<VulkanImage>& vulkanImages);
+	void createInputDescriptors(const VulkanContextInfo& contextInfo, const std::vector< std::vector<VulkanImage> >& vulkanImages);
 	//void createStaticCommandBuffers(const VulkanContextInfo& contextInfo,
 	//	const VulkanRenderPass& renderPass, const Mesh& mesh, const bool vrmode);
 	void createStaticCommandBuffers(const VulkanContextInfo& contextInfo,
@@ -80,19 +79,9 @@ public:
 
 	VkShaderModule createShaderModule(const std::vector<char>& code, const VulkanContextInfo& contextInfo) const;
 
-	////SECONDARY RECORDING////
-	void recordCommandBufferSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
-		const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const Model& model, 
-		const Mesh& mesh, const bool vrmode);
-	void beginRecordingSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
-		const uint32_t imageIndex, const VulkanContextInfo& contextInfo);
-	bool endRecordingSecondary(const uint32_t imageIndex);
 
 	void getViewportAndScissor(VkViewport& outViewport, VkRect2D& outScissor, 
-		const VulkanContextInfo& contextInfo, const uint32_t camIndex, const bool vrmode);
-
-	void recordCommandBufferPrimary(const VkCommandBuffer& singleCmdBuffer,
-		const uint32_t imageIndex, const VulkanContextInfo& contextInfo, const Model& model, const Mesh& mesh, const bool vrmode);
+		const VulkanContextInfo& contextInfo, const uint32_t camIndex, const bool vrmode, const VkExtent2D& renderTargetExtent);
 	void createSemaphores(const VulkanContextInfo& contextInfo);
 
 	//cleanup

@@ -2,10 +2,16 @@
 
 Camera::Camera() {
 	vrScalings.resize(numQualitySettings);
+	renderTargetExtent.resize(numQualitySettings);
+	renderTargetExtentNoVR = { width, height };
 	for (int i = 0; i < numQualitySettings; ++i) {
 		vrScalings[i] = MAX_QUALITY - i*qualityStepping;
+		uint32_t targetWidth = width*vrScalings[i];
+		uint32_t targetHeight = height*vrScalings[i];
+		targetWidth  = ((targetWidth  & 1) == 1) ? targetWidth  - 1 : targetWidth;
+		targetHeight = ((targetHeight & 1) == 1) ? targetHeight - 1 : targetHeight;
+		renderTargetExtent[i] = { targetWidth, targetHeight };
 	}
-
 	updateComponentVectorsAndViews(false);
 }
 
@@ -83,17 +89,20 @@ void Camera::updateQualitySettings(const bool increase) {
 }
 
 void Camera::updateDimensions(const VkExtent2D& swapChainExtent) {
-	const float scale = vrmode ? 0.5f : 1.f;
-	width = hmdWidth * scale * (vrmode ? vrScalings[qualityIndex] : 1.f);
-	height = hmdHeight * (vrmode ? vrScalings[qualityIndex] : 1.f);
+	width  = vrmode ? renderTargetExtent[qualityIndex].width*0.5f : renderTargetExtentNoVR.width;
+	height = vrmode ? renderTargetExtent[qualityIndex].height : renderTargetExtentNoVR.height;
+
+	//const float scale = vrmode ? 0.5f : 1.f;
+	//width = hmdWidth * scale * (vrmode ? vrScalings[qualityIndex] : 1.f);
+	//height = hmdHeight * (vrmode ? vrScalings[qualityIndex] : 1.f);
 
 	//ensure that dims are even to avoid stencil issues
-	width  = ((width  & 1) == 1) && !vrmode ? width  - 1 : width;
-	height = ((height & 1) == 1)            ? height - 1 : height;
+	//width  = ((width  & 1) == 1) && !vrmode ? width  - 1 : width;
+	//height = ((height & 1) == 1)            ? height - 1 : height;
 
 	//command buffers need the full render area
-	renderTargetExtent.width = vrmode ? 2 * width : width;
-	renderTargetExtent.height = height;
+	//renderTargetExtent.width = vrmode ? 2 * width : width;
+	//renderTargetExtent.height = height;
 
 	//width = swapChainExtent.width * scale * (false ? vrScalings[qualityIndex] : 1.f);
 	//height = swapChainExtent.height * (false ? vrScalings[qualityIndex] : 1.f);
