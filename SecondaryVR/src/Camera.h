@@ -25,11 +25,14 @@ public:
 	//adaptive quality
 	bool qualityEnabled = true;
 	float targetFrameTime_ms = 2.f;
-	float MAX_QUALITY = 1.41f;//work around for odd scaling issue in holefill shader due to odd dims for x and y at certain intermediate scalings
-	float virtualRenderTargetScaling = MAX_QUALITY;
+	//float MAX_QUALITY = 0.599999964f;//work around for odd scaling issue in holefill shader due to odd dims for x and y at certain intermediate scalings
+	float MAX_QUALITY = 1.4;//work around for odd scaling issue in holefill shader due to odd dims for x and y at certain intermediate scalings
+
+	//float virtualRenderTargetScaling = MAX_QUALITY;
+
 	int qualityIndex = 0;
-	int numQualitySettings = 1;
-	float qualityStepping = 0.4f;
+	int numQualitySettings = 10;
+	float qualityStepping = 0.1f;
 	std::vector<float> vrScalings;
 
 	bool vrmode = false;
@@ -37,8 +40,9 @@ public:
 	//float width = 1280;
 	//float height = 800;
 	//DK1 virtual 1.4x(barrel will shrink to down)
-	float width = hmdWidth*(vrmode ? virtualRenderTargetScaling : 1.f);
-	float height = hmdHeight*(vrmode ? virtualRenderTargetScaling : 1.f);
+	uint32_t width = hmdWidth;
+	uint32_t height = hmdHeight;
+	VkExtent2D renderTargetExtent = {width, height};
 	//HALF modern
 	//float width = 1080;
 	//float height = 600;
@@ -52,7 +56,7 @@ public:
 	glm::vec3 camRight;
 	glm::vec3 camUp;
 	glm::mat4 view[2];
-	glm::mat4 proj = glm::perspective(glm::radians(fov), width / height, near, far);
+	glm::mat4 proj = glm::perspective(glm::radians(fov), float(width) / height, near, far);
 
 
 public:

@@ -5,11 +5,8 @@ layout(binding = 0) uniform sampler2D texSampler;
 
 layout (push_constant) uniform PerDrawCallInfo {
     int toggleFlags;
-    float hmdWidth;
-    float hmdHeight;
-    float VRvirtualScaling;
-    float virtualWidth;
-    float virtualHeight;
+    int virtualWidth;
+    int virtualHeight;
 } PushConstant;
 const int camBit = 1;
 const int vrBit = 0;
@@ -44,25 +41,17 @@ void main() {
 
     //else fill holes
     //POSSIBLE SPIR-V COMPILER BUG: when width and height aren't const bad things happen for the odd cases
-//    const int width = int(PushConstant.hmdWidth * PushConstant.VRvirtualScaling);
-//    const int height = int(PushConstant.hmdHeight * PushConstant.VRvirtualScaling);
-    const int width = int(PushConstant.virtualWidth);
-    const int height = int(PushConstant.virtualHeight);
+    const int width = PushConstant.virtualWidth;
+    const int height = PushConstant.virtualHeight;
 
-	//THERES AN ISSUE WHEN WIDTH OR HEIGHT IS ODD, DIFFICULTY LINING UP UV WITH CORRESPONDING PIXEL IN THE HOLE FILLING?
-//    const int samplingWidth  = ((width & 1) == 1) ? width+1 : width;
-//    const int samplingHeight = ((height & 1) == 1) ? height+1 : height;
-//    const vec2 invWandH = vec2(1.f/samplingWidth, 1.f/samplingHeight);
- 
     const float invWidth = 1.f / width;
     const float invHeight = 1.f / height;
     const vec2 invWandH = vec2(invWidth, invHeight);
 
 
     const ivec2 pixel = ivec2(gl_FragCoord.x, gl_FragCoord.y);
-    ivec2 groupPixel = pixel;
-    groupPixel.x = ((groupPixel.x & 1) == 1) ? groupPixel.x : groupPixel.x+1;
-    groupPixel.y = ((groupPixel.y & 1) == 1) ? groupPixel.y : groupPixel.y+1;
+    const ivec2 groupPixel = ivec2( ((pixel.x & 1) == 1) ? pixel.x : pixel.x+1,
+                                    ((pixel.y & 1) == 1) ? pixel.y : pixel.y+1);
 
     //UV for the 2x2 pixel quad in which it resides
     const vec2 groupUV = vec2(groupPixel.x*invWidth, groupPixel.y*invHeight);
@@ -72,10 +61,6 @@ void main() {
     //if Y is greater/less than vr eye viewport x (rendertarget width/2)
     equivNDC *= vec2(1.f , height/(width*0.5f)); 
     const float radius = length(equivNDC - ndcCenter[camIndex]);
-
-
-    //////CORRECTION
-    const float extraRadiusCorrection = -0.01f;
 
 
     if (radius < (1.f + extraRadius)) {
@@ -122,38 +107,6 @@ vec2 pixelCenterToUV(const vec2 pixelCenter, const vec2 invWandH) {
 }
 
 void fillCheckerHole(const ivec2 pixel, const vec2 invWandH) {
-//	const int pixelID = determinePixelID2x2(pixel);//numbered like reading a book(0 is upper left, 3 is lower right)
-//	const vec2 pixelC = vec2(pixel.x + 0.5f, pixel.y + 0.5f);
-//	const float w1 = 0.375f;
-//	const float w2 = 0.375f;
-//	const float w3 = 0.125f;
-//	const float w4 = 0.125f;
-//	if		 (pixelID == 0) {//upper left
-//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f, -1.f), invWandH)) );//above
-//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f,  0.f), invWandH)) );//left
-//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f,  0.f), invWandH)) );//skip right
-//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  2.f), invWandH)) );//skip down
-//		outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
-//	} else if(pixelID == 1) {//upper right
-//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f, -1.f), invWandH)) );//above
-//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f,  0.f), invWandH)) );//right
-//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f,  0.f), invWandH)) );//skip left
-//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  2.f), invWandH)) );//skip down
-//		outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
-//	} else if(pixelID == 2) {//lower left
-//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  1.f), invWandH)) );//below
-//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f,  0.f), invWandH)) );//left
-//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f,  0.f), invWandH)) );//skip right
-//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f, -2.f), invWandH)) );//skip up
-//		outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
-//	} else if(pixelID == 3) {//lower right
-//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  1.f), invWandH)) );//below
-//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f,  0.f), invWandH)) );//right
-//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f,  0.f), invWandH)) );//skip left
-//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f, -2.f), invWandH)) );//skip up
-//		outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
-//	}
-
 	const int pixelID = determinePixelID2x2(pixel);//numbered like reading a book(0 is upper left, 3 is lower right)
 	const vec2 pixelC = vec2(pixel.x + 0.5f, pixel.y + 0.5f);
 	const float w1 = 0.375f;
@@ -193,42 +146,6 @@ void fillCheckerHole(const ivec2 pixel, const vec2 invWandH) {
 }
 
 void reshadeRenderedChecker(const ivec2 pixel, const vec2 invWandH) {
-//	const int pixelID = determinePixelID2x2(pixel);//numbered like reading a book(0 is upper left, 3 is lower right)
-//	const vec2 pixelC = vec2(pixel.x + 0.5f, pixel.y + 0.5f);
-//	const float w1 = 0.50000f;
-//	const float w2 = 0.28125f;
-//	const float w3 = 0.09375f;
-//	const float w4 = 0.09375f;
-//	const float w5 = 0.03125f;
-//	if		 (pixelID == 0) {//upper left
-//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  0.f), invWandH)) );//self
-//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f, -1.f), invWandH)) );//1Left 1Up
-//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f, -1.f), invWandH)) );//2Right 1Up
-//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f,  2.f), invWandH)) );//1Left 2Down
-//		const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f,  2.f), invWandH)) );//2Right 2Down
-//		outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
-//	} else if(pixelID == 1) {//upper right
-//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  0.f), invWandH)) );//self
-//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f, -1.f), invWandH)) );//1Right 1Up
-//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f, -1.f), invWandH)) );//2Left 1Up
-//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f,  2.f), invWandH)) );//1Right 2Down
-//		const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f,  2.f), invWandH)) );//2Left 2Down
-//		outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
-//	} else if(pixelID == 2) {//lower left
-//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  0.f), invWandH)) );//self
-//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f,  1.f), invWandH)) );//1Left 1Down
-//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f,  1.f), invWandH)) );//2Right 1Down
-//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f, -2.f), invWandH)) );//1Left 2Up
-//		const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f, -2.f), invWandH)) );//2Right 2Up
-//		outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
-//	} else if(pixelID == 3) {//lower right
-//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  0.f), invWandH)) );//self
-//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f,  1.f), invWandH)) );//1Right 1Down
-//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f,  1.f), invWandH)) );//2Left 1Down
-//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f, -2.f), invWandH)) );//1Right 2Up
-//		const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f, -2.f), invWandH)) );//2Left 2Up
-//		outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
-//	}
 	const int pixelID = determinePixelID2x2(pixel);//numbered like reading a book(0 is upper left, 3 is lower right)
 	const vec2 pixelC = vec2(pixel.x + 0.5f, pixel.y + 0.5f);
 	const float w1 = 0.50000f;

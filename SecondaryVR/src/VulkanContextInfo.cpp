@@ -239,16 +239,11 @@ void VulkanContextInfo::initStencils() {
 
 void VulkanContextInfo::createDepthImage() {
 	determineDepthFormat();
-	VkExtent2D renderTargetExtent;
 	if (!camera.vrmode) {
-		renderTargetExtent.width = static_cast<uint32_t>(camera.width);
-		renderTargetExtent.height = static_cast<uint32_t>(camera.height);
-		depthImage = VulkanImage(IMAGETYPE::DEPTH, renderTargetExtent, depthFormat, *this, std::string(""));
+		depthImage = VulkanImage(IMAGETYPE::DEPTH, camera.renderTargetExtent, depthFormat, *this, std::string(""));
 	} else {
 		const int i = camera.qualityIndex;
-		renderTargetExtent.width = static_cast<uint32_t>(radialDensityMasks[i].width);
-		renderTargetExtent.height = static_cast<uint32_t>(radialDensityMasks[i].height);
-		depthImage = VulkanImage(IMAGETYPE::DEPTH, renderTargetExtent, depthFormat, *this, radialDensityMasks[i].filename);
+		depthImage = VulkanImage(IMAGETYPE::DEPTH, camera.renderTargetExtent, depthFormat, *this, radialDensityMasks[i].filename);
 	}
 }
 

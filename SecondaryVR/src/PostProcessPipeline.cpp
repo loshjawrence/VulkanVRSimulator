@@ -45,10 +45,7 @@ void PostProcessPipeline::createOutputImages(const VulkanContextInfo& contextInf
 		
 		//TODO: if flag is present then use swapchain stuff otherwise 16F
 		if (!isPresent) {
-			VkExtent2D cameraExtent = {};
-			cameraExtent.height = contextInfo.camera.height;
-			cameraExtent.width = contextInfo.camera.vrmode ? 2.f * contextInfo.camera.width : contextInfo.camera.width;
-			outputImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, cameraExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
+			outputImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.camera.renderTargetExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
 		} else {
 			outputImages[i].image = contextInfo.swapChainImages[i];
 			outputImages[i].imageView = contextInfo.swapChainImageViews[i];
@@ -91,8 +88,8 @@ void PostProcessPipeline::createFramebuffers(const VulkanContextInfo& contextInf
 			framebufferCreateInfo.pAttachments = &outputImages[i].imageView;
 			framebufferCreateInfo.attachmentCount = 1;
 
-			framebufferCreateInfo.width = contextInfo.camera.vrmode ? 2.f * contextInfo.camera.width : contextInfo.camera.width;
-			framebufferCreateInfo.height = contextInfo.camera.height;
+			framebufferCreateInfo.width = contextInfo.camera.renderTargetExtent.width;
+			framebufferCreateInfo.height = contextInfo.camera.renderTargetExtent.height;
 			framebufferCreateInfo.layers = 1;
 
 			if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &framebuffers[i]) != VK_SUCCESS) {
@@ -168,10 +165,7 @@ void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
 
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	VkExtent2D cameraExtent = {}; 
-	cameraExtent.height = contextInfo.camera.height; 
-	cameraExtent.width = contextInfo.camera.vrmode ? 2.f * contextInfo.camera.width : contextInfo.camera.width;
-	scissor.extent = isPresent ? contextInfo.swapChainExtent : cameraExtent;
+	scissor.extent = isPresent ? contextInfo.swapChainExtent : contextInfo.camera.renderTargetExtent;
 
 	VkPipelineViewportStateCreateInfo viewportState = {};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -301,113 +295,113 @@ VkShaderModule PostProcessPipeline::createShaderModule( const std::vector<char>&
 	return shaderModule;
 }
 
-void PostProcessPipeline::recordCommandBufferSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
-	const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
-	const Model& model, const Mesh& mesh, const bool vrmode)
-{
+//void PostProcessPipeline::recordCommandBufferSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
+//	const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
+//	const Model& model, const Mesh& mesh, const bool vrmode)
+//{
+//
+//	if (!recording) {
+//		beginRecordingSecondary(inheritanceInfo, imageIndex, contextInfo);
+//	} 
+//
+//	const VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
+//	const VkDeviceSize offsets[] = { 0 };
+//	vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
+//
+//	vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+//
+//	vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
+//
+//	const int camIndex = 0;
+//	const PostProcessPushConstant pushconstant = { camIndex << 1 };
+//	vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+//
+//	VkViewport viewport = {}; VkRect2D scissor = {};
+//	getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+//	vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
+//	vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
+//
+//	vkCmdDrawIndexed(commandBuffers[imageIndex], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+//
+//	if (vrmode) {
+//		const uint32_t camIndex = 1;
+//		const PostProcessPushConstant pushconstant = { camIndex << 1 };
+//		vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+//
+//		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+//		vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
+//		vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
+//
+//		vkCmdDrawIndexed(commandBuffers[imageIndex], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+//	}
+//}
+//
+//void PostProcessPipeline::beginRecordingSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
+//	uint32_t imageIndex, const VulkanContextInfo& contextInfo) 
+//{
+//	recording = true;
+//	VkCommandBufferBeginInfo beginInfo = {};
+//	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+//	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+//	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+//	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+//	beginInfo.pInheritanceInfo = &inheritanceInfo;
+//
+//	vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo);
+//
+//	vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+//}
+//
+//
+//bool PostProcessPipeline::endRecordingSecondary(const uint32_t imageIndex) {
+//	if (recording) {
+//		recording = false;
+//
+//		if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
+//			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to record command buffer!";
+//			throw std::runtime_error(ss.str());
+//		}
+//		return true;
+//	}
+//	return false;
+//}
 
-	if (!recording) {
-		beginRecordingSecondary(inheritanceInfo, imageIndex, contextInfo);
-	} 
-
-	const VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
-	const VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
-
-	vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-	vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
-
-	const int camIndex = 0;
-	const PostProcessPushConstant pushconstant = { camIndex << 1 };
-	vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
-
-	VkViewport viewport = {}; VkRect2D scissor = {};
-	getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
-	vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
-	vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
-
-	vkCmdDrawIndexed(commandBuffers[imageIndex], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
-
-	if (vrmode) {
-		const uint32_t camIndex = 1;
-		const PostProcessPushConstant pushconstant = { camIndex << 1 };
-		vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
-
-		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
-		vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
-		vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
-
-		vkCmdDrawIndexed(commandBuffers[imageIndex], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
-	}
-}
-
-void PostProcessPipeline::beginRecordingSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
-	uint32_t imageIndex, const VulkanContextInfo& contextInfo) 
-{
-	recording = true;
-	VkCommandBufferBeginInfo beginInfo = {};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-	beginInfo.pInheritanceInfo = &inheritanceInfo;
-
-	vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo);
-
-	vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-}
-
-
-bool PostProcessPipeline::endRecordingSecondary(const uint32_t imageIndex) {
-	if (recording) {
-		recording = false;
-
-		if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
-			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to record command buffer!";
-			throw std::runtime_error(ss.str());
-		}
-		return true;
-	}
-	return false;
-}
-
-void PostProcessPipeline::recordCommandBufferPrimary(const VkCommandBuffer& primaryCmdBuffer, 
-	const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
-	 const Model& model, const Mesh& mesh, const bool vrmode)
-{
-	vkCmdBindPipeline(primaryCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
-
-	const VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
-	const VkDeviceSize offsets[] = { 0 };
-	vkCmdBindVertexBuffers(primaryCmdBuffer, 0, 1, vertexBuffers, offsets);
-	vkCmdBindIndexBuffer(primaryCmdBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-	vkCmdBindDescriptorSets(primaryCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
-
-	const uint32_t camIndex = 0;
-	const PostProcessPushConstant pushconstant = { camIndex << 1 };
-	vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
-
-	VkViewport viewport = {}; VkRect2D scissor = {};
-	getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
-	vkCmdSetViewport(primaryCmdBuffer, 0, 1, &viewport);
-	vkCmdSetScissor(primaryCmdBuffer, 0, 1, &scissor);
-
-	vkCmdDrawIndexed(primaryCmdBuffer, static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
-
-	if (vrmode) {
-		const uint32_t camIndex = 1;
-		const PostProcessPushConstant pushconstant = { camIndex << 1 };
-		vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
-
-		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
-		vkCmdSetViewport(primaryCmdBuffer, 0, 1, &viewport);
-		vkCmdSetScissor(primaryCmdBuffer, 0, 1, &scissor);
-
-		vkCmdDrawIndexed(primaryCmdBuffer, static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
-	}
-}
+//void PostProcessPipeline::recordCommandBufferPrimary(const VkCommandBuffer& primaryCmdBuffer, 
+//	const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
+//	 const Model& model, const Mesh& mesh, const bool vrmode)
+//{
+//	vkCmdBindPipeline(primaryCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+//
+//	const VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
+//	const VkDeviceSize offsets[] = { 0 };
+//	vkCmdBindVertexBuffers(primaryCmdBuffer, 0, 1, vertexBuffers, offsets);
+//	vkCmdBindIndexBuffer(primaryCmdBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+//
+//	vkCmdBindDescriptorSets(primaryCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
+//
+//	const uint32_t camIndex = 0;
+//	const PostProcessPushConstant pushconstant = { camIndex << 1 };
+//	vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+//
+//	VkViewport viewport = {}; VkRect2D scissor = {};
+//	getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+//	vkCmdSetViewport(primaryCmdBuffer, 0, 1, &viewport);
+//	vkCmdSetScissor(primaryCmdBuffer, 0, 1, &scissor);
+//
+//	vkCmdDrawIndexed(primaryCmdBuffer, static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+//
+//	if (vrmode) {
+//		const uint32_t camIndex = 1;
+//		const PostProcessPushConstant pushconstant = { camIndex << 1 };
+//		vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+//
+//		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+//		vkCmdSetViewport(primaryCmdBuffer, 0, 1, &viewport);
+//		vkCmdSetScissor(primaryCmdBuffer, 0, 1, &scissor);
+//
+//		vkCmdDrawIndexed(primaryCmdBuffer, static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+//	}
+//}
 
 void PostProcessPipeline::getViewportAndScissor(VkViewport& outViewport, VkRect2D& outScissor, 
 	const VulkanContextInfo& contextInfo, const uint32_t camIndex, const bool vrmode) {
@@ -470,9 +464,7 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 		renderPassInfo.renderPass = isPresent ? renderPass.renderPassPostProcessPresent : renderPass.renderPassPostProcess;
 		renderPassInfo.framebuffer = framebuffers[i];
 		renderPassInfo.renderArea.offset = { 0, 0 };
-		VkExtent2D cameraExtent = {}; cameraExtent.height = contextInfo.camera.height;
-		cameraExtent.width = contextInfo.camera.vrmode ? 2.f *  contextInfo.camera.width : contextInfo.camera.width;
-		renderPassInfo.renderArea.extent = isPresent ? contextInfo.swapChainExtent : cameraExtent;
+		renderPassInfo.renderArea.extent = isPresent ? contextInfo.swapChainExtent : contextInfo.camera.renderTargetExtent;
 
 		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 		renderPassInfo.pClearValues = clearValues.data();
@@ -496,8 +488,7 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 		
 		const uint32_t camIndex = 0;
 		const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode), 
-														hmdWidth, hmdHeight, contextInfo.camera.vrScalings[contextInfo.camera.qualityIndex], 
-														cameraExtent.width, cameraExtent.height};
+														contextInfo.camera.renderTargetExtent.width, contextInfo.camera.renderTargetExtent.height};
 		vkCmdPushConstants(commandBuffers[i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 
 		VkViewport viewport = {}; VkRect2D scissor = {};
@@ -519,8 +510,7 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
 			const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode),
-															hmdWidth, hmdHeight, contextInfo.camera.vrScalings[contextInfo.camera.qualityIndex],
-															cameraExtent.width, cameraExtent.height};
+															contextInfo.camera.renderTargetExtent.width, contextInfo.camera.renderTargetExtent.height};
 			vkCmdPushConstants(commandBuffers[i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
 			getViewportAndScissor(viewport, scissor, contextInfo, camIndex, contextInfo.camera.vrmode);
 			vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);

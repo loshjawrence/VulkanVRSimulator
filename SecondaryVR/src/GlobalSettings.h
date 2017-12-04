@@ -10,27 +10,22 @@
 #include <tuple>
 #include <string>
 
-//const float hmdWidth = 1556;//max on this laptop
-//const float hmdHeight = 972;
-//const float hmdWidth = 320;
-//const float hmdHeight = 200;
-//const float hmdWidth = 640;
-//const float hmdHeight = 400;
+
 //const float hmdWidth = 1080;
 //const float hmdHeight = 600;
 
-const float hmdWidth = 1280;
-const float hmdHeight = 800;
+const uint32_t hmdWidth = 1280;
+const uint32_t hmdHeight = 800;
 
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+///////// THESE ARE THE SHADERS A MESH CAN RUN BASED ON ITS MATERIAL FLAGS (DIFFUSE NORMAL HEIGHT SPEC)///////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const uint32_t HAS_NONE		= 1 << 0; 
 const uint32_t HAS_DIFFUSE	= 1 << 1; 
 const uint32_t HAS_NOR		= 1 << 2; 
 const uint32_t HAS_SPEC		= 1 << 3;
 const uint32_t HAS_HEIGHT	= 1 << 4;
 
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-///////// THESE ARE THE SHADERS A MESH CAN RUN BASED ON ITS MATERIAL FLAGS (DIFFUSE NORMAL HEIGHT SPEC)///////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 //if you need to add a new one just add it here and it will make a new pipeline for it
 const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_ForwardPipeline =
