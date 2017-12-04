@@ -31,7 +31,7 @@ public:
 	//float virtualRenderTargetScaling = MAX_QUALITY;
 
 	int qualityIndex = 0;
-	int numQualitySettings = 10;
+	int numQualitySettings = 8;
 	float qualityStepping = 0.1f;
 	std::vector<float> vrScalings;
 
