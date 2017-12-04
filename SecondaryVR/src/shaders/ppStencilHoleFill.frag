@@ -8,6 +8,8 @@ layout (push_constant) uniform PerDrawCallInfo {
     float hmdWidth;
     float hmdHeight;
     float VRvirtualScaling;
+    float virtualWidth;
+    float virtualHeight;
 } PushConstant;
 const int camBit = 1;
 const int vrBit = 0;
@@ -42,8 +44,10 @@ void main() {
 
     //else fill holes
     //POSSIBLE SPIR-V COMPILER BUG: when width and height aren't const bad things happen for the odd cases
-    const int width = int(PushConstant.hmdWidth * PushConstant.VRvirtualScaling);
-    const int height = int(PushConstant.hmdHeight * PushConstant.VRvirtualScaling);
+//    const int width = int(PushConstant.hmdWidth * PushConstant.VRvirtualScaling);
+//    const int height = int(PushConstant.hmdHeight * PushConstant.VRvirtualScaling);
+    const int width = int(PushConstant.virtualWidth);
+    const int height = int(PushConstant.virtualHeight);
 
 	//THERES AN ISSUE WHEN WIDTH OR HEIGHT IS ODD, DIFFICULTY LINING UP UV WITH CORRESPONDING PIXEL IN THE HOLE FILLING?
 //    const int samplingWidth  = ((width & 1) == 1) ? width+1 : width;
@@ -71,7 +75,7 @@ void main() {
 
 
     //////CORRECTION
-    const float correction = -0.01f;
+    const float extraRadiusCorrection = -0.01f;
 
 
     if (radius < (1.f + extraRadius)) {
@@ -118,41 +122,113 @@ vec2 pixelCenterToUV(const vec2 pixelCenter, const vec2 invWandH) {
 }
 
 void fillCheckerHole(const ivec2 pixel, const vec2 invWandH) {
+//	const int pixelID = determinePixelID2x2(pixel);//numbered like reading a book(0 is upper left, 3 is lower right)
+//	const vec2 pixelC = vec2(pixel.x + 0.5f, pixel.y + 0.5f);
+//	const float w1 = 0.375f;
+//	const float w2 = 0.375f;
+//	const float w3 = 0.125f;
+//	const float w4 = 0.125f;
+//	if		 (pixelID == 0) {//upper left
+//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f, -1.f), invWandH)) );//above
+//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f,  0.f), invWandH)) );//left
+//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f,  0.f), invWandH)) );//skip right
+//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  2.f), invWandH)) );//skip down
+//		outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
+//	} else if(pixelID == 1) {//upper right
+//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f, -1.f), invWandH)) );//above
+//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f,  0.f), invWandH)) );//right
+//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f,  0.f), invWandH)) );//skip left
+//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  2.f), invWandH)) );//skip down
+//		outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
+//	} else if(pixelID == 2) {//lower left
+//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  1.f), invWandH)) );//below
+//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f,  0.f), invWandH)) );//left
+//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f,  0.f), invWandH)) );//skip right
+//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f, -2.f), invWandH)) );//skip up
+//		outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
+//	} else if(pixelID == 3) {//lower right
+//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  1.f), invWandH)) );//below
+//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f,  0.f), invWandH)) );//right
+//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f,  0.f), invWandH)) );//skip left
+//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f, -2.f), invWandH)) );//skip up
+//		outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
+//	}
+
 	const int pixelID = determinePixelID2x2(pixel);//numbered like reading a book(0 is upper left, 3 is lower right)
 	const vec2 pixelC = vec2(pixel.x + 0.5f, pixel.y + 0.5f);
 	const float w1 = 0.375f;
 	const float w2 = 0.375f;
 	const float w3 = 0.125f;
 	const float w4 = 0.125f;
+    vec2 offset1;
+    vec2 offset2;
+    vec2 offset3;
+    vec2 offset4;
 	if		 (pixelID == 0) {//upper left
-		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f, -1.f), invWandH)) );//above
-		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f,  0.f), invWandH)) );//left
-		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f,  0.f), invWandH)) );//skip right
-		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  2.f), invWandH)) );//skip down
-		outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
+		offset1 = vec2( 0.f, -1.f);//above
+		offset2 = vec2(-1.f,  0.f);//left
+		offset3 = vec2( 2.f,  0.f);//skip right
+		offset4 = vec2( 0.f,  2.f);//skip down
 	} else if(pixelID == 1) {//upper right
-		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f, -1.f), invWandH)) );//above
-		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f,  0.f), invWandH)) );//right
-		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f,  0.f), invWandH)) );//skip left
-		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  2.f), invWandH)) );//skip down
-		outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
+		offset1 = vec2( 0.f, -1.f);//above
+		offset2 = vec2( 1.f,  0.f);//right
+		offset3 = vec2(-2.f,  0.f);//skip left
+		offset4 = vec2( 0.f,  2.f);//skip down
 	} else if(pixelID == 2) {//lower left
-		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  1.f), invWandH)) );//below
-		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f,  0.f), invWandH)) );//left
-		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f,  0.f), invWandH)) );//skip right
-		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f, -2.f), invWandH)) );//skip up
-		outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
+		offset1 = vec2( 0.f,  1.f);//below
+		offset2 = vec2(-1.f,  0.f);//left
+		offset3 = vec2( 2.f,  0.f);//skip right
+		offset4 = vec2( 0.f, -2.f);//skip up
 	} else if(pixelID == 3) {//lower right
-		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  1.f), invWandH)) );//below
-		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f,  0.f), invWandH)) );//right
-		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f,  0.f), invWandH)) );//skip left
-		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f, -2.f), invWandH)) );//skip up
-		outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
+		offset1 = vec2( 0.f,  1.f);//below
+		offset2 = vec2( 1.f,  0.f);//right
+		offset3 = vec2(-2.f,  0.f);//skip left
+		offset4 = vec2( 0.f, -2.f);//skip up
 	}
-	
+    const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+offset1, invWandH)) );
+    const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+offset2, invWandH)) );
+    const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+offset3, invWandH)) );
+    const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+offset4, invWandH)) );
+    outColor = vec4(sample1 + sample2 + sample3 + sample4, 1.f);
 }
 
 void reshadeRenderedChecker(const ivec2 pixel, const vec2 invWandH) {
+//	const int pixelID = determinePixelID2x2(pixel);//numbered like reading a book(0 is upper left, 3 is lower right)
+//	const vec2 pixelC = vec2(pixel.x + 0.5f, pixel.y + 0.5f);
+//	const float w1 = 0.50000f;
+//	const float w2 = 0.28125f;
+//	const float w3 = 0.09375f;
+//	const float w4 = 0.09375f;
+//	const float w5 = 0.03125f;
+//	if		 (pixelID == 0) {//upper left
+//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  0.f), invWandH)) );//self
+//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f, -1.f), invWandH)) );//1Left 1Up
+//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f, -1.f), invWandH)) );//2Right 1Up
+//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f,  2.f), invWandH)) );//1Left 2Down
+//		const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f,  2.f), invWandH)) );//2Right 2Down
+//		outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
+//	} else if(pixelID == 1) {//upper right
+//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  0.f), invWandH)) );//self
+//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f, -1.f), invWandH)) );//1Right 1Up
+//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f, -1.f), invWandH)) );//2Left 1Up
+//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f,  2.f), invWandH)) );//1Right 2Down
+//		const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f,  2.f), invWandH)) );//2Left 2Down
+//		outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
+//	} else if(pixelID == 2) {//lower left
+//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  0.f), invWandH)) );//self
+//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f,  1.f), invWandH)) );//1Left 1Down
+//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f,  1.f), invWandH)) );//2Right 1Down
+//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f, -2.f), invWandH)) );//1Left 2Up
+//		const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f, -2.f), invWandH)) );//2Right 2Up
+//		outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
+//	} else if(pixelID == 3) {//lower right
+//		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  0.f), invWandH)) );//self
+//		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f,  1.f), invWandH)) );//1Right 1Down
+//		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f,  1.f), invWandH)) );//2Left 1Down
+//		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f, -2.f), invWandH)) );//1Right 2Up
+//		const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f, -2.f), invWandH)) );//2Left 2Up
+//		outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
+//	}
 	const int pixelID = determinePixelID2x2(pixel);//numbered like reading a book(0 is upper left, 3 is lower right)
 	const vec2 pixelC = vec2(pixel.x + 0.5f, pixel.y + 0.5f);
 	const float w1 = 0.50000f;
@@ -160,33 +236,40 @@ void reshadeRenderedChecker(const ivec2 pixel, const vec2 invWandH) {
 	const float w3 = 0.09375f;
 	const float w4 = 0.09375f;
 	const float w5 = 0.03125f;
+    vec2 offset1;
+    vec2 offset2;
+    vec2 offset3;
+    vec2 offset4;
+    vec2 offset5;
 	if		 (pixelID == 0) {//upper left
-		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  0.f), invWandH)) );//self
-		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f, -1.f), invWandH)) );//1Left 1Up
-		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f, -1.f), invWandH)) );//2Right 1Up
-		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f,  2.f), invWandH)) );//1Left 2Down
-		const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f,  2.f), invWandH)) );//2Right 2Down
-		outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
+		offset1 = vec2( 0.f,  0.f);//self
+		offset2 = vec2(-1.f, -1.f);//1Left 1Up
+		offset3 = vec2( 2.f, -1.f);//2Right 1Up
+		offset4 = vec2(-1.f,  2.f);//1Left 2Down
+		offset5 = vec2( 2.f,  2.f);//2Right 2Down
 	} else if(pixelID == 1) {//upper right
-		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  0.f), invWandH)) );//self
-		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f, -1.f), invWandH)) );//1Right 1Up
-		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f, -1.f), invWandH)) );//2Left 1Up
-		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f,  2.f), invWandH)) );//1Right 2Down
-		const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f,  2.f), invWandH)) );//2Left 2Down
-		outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
+		offset1 = vec2( 0.f,  0.f);//self
+		offset2 = vec2( 1.f, -1.f);//1Right 1Up
+		offset3 = vec2(-2.f, -1.f);//2Left 1Up
+		offset4 = vec2( 1.f,  2.f);//1Right 2Down
+		offset5 = vec2(-2.f,  2.f);//2Left 2Down
 	} else if(pixelID == 2) {//lower left
-		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  0.f), invWandH)) );//self
-		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f,  1.f), invWandH)) );//1Left 1Down
-		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f,  1.f), invWandH)) );//2Right 1Down
-		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-1.f, -2.f), invWandH)) );//1Left 2Up
-		const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 2.f, -2.f), invWandH)) );//2Right 2Up
-		outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
+		offset1 = vec2( 0.f,  0.f);//self
+		offset2 = vec2(-1.f,  1.f);//1Left 1Down
+		offset3 = vec2( 2.f,  1.f);//2Right 1Down
+		offset4 = vec2(-1.f, -2.f);//1Left 2Up
+		offset5 = vec2( 2.f, -2.f);//2Right 2Up
 	} else if(pixelID == 3) {//lower right
-		const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 0.f,  0.f), invWandH)) );//self
-		const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f,  1.f), invWandH)) );//1Right 1Down
-		const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f,  1.f), invWandH)) );//2Left 1Down
-		const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2( 1.f, -2.f), invWandH)) );//1Right 2Up
-		const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+vec2(-2.f, -2.f), invWandH)) );//2Left 2Up
-		outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
+		offset1 = vec2( 0.f,  0.f);//self
+		offset2 = vec2( 1.f,  1.f);//1Right 1Down
+		offset3 = vec2(-2.f,  1.f);//2Left 1Down
+		offset4 = vec2( 1.f, -2.f);//1Right 2Up
+		offset5 = vec2(-2.f, -2.f);//2Left 2Up
 	}
+    const vec3 sample1 =  w1 * vec3( texture(texSampler, pixelCenterToUV(pixelC+offset1, invWandH)) );
+    const vec3 sample2 =  w2 * vec3( texture(texSampler, pixelCenterToUV(pixelC+offset2, invWandH)) );
+    const vec3 sample3 =  w3 * vec3( texture(texSampler, pixelCenterToUV(pixelC+offset3, invWandH)) );
+    const vec3 sample4 =  w4 * vec3( texture(texSampler, pixelCenterToUV(pixelC+offset4, invWandH)) );
+    const vec3 sample5 =  w5 * vec3( texture(texSampler, pixelCenterToUV(pixelC+offset5, invWandH)) );
+    outColor = vec4(sample1 + sample2 + sample3 + sample4 + sample5, 1.f);
 }

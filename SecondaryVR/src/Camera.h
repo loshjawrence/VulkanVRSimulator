@@ -25,11 +25,11 @@ public:
 	//adaptive quality
 	bool qualityEnabled = true;
 	float targetFrameTime_ms = 2.f;
-	float MAX_QUALITY = 1.5;//work around for odd scaling issue in holefill shader due to odd dims for x and y at certain intermediate scalings
+	float MAX_QUALITY = 1.41f;//work around for odd scaling issue in holefill shader due to odd dims for x and y at certain intermediate scalings
 	float virtualRenderTargetScaling = MAX_QUALITY;
 	int qualityIndex = 0;
 	int numQualitySettings = 1;
-	float qualityStepping = 0.5f;
+	float qualityStepping = 0.4f;
 	std::vector<float> vrScalings;
 
 	bool vrmode = false;

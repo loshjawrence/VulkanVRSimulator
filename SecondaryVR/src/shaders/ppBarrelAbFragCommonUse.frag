@@ -64,7 +64,7 @@ void main() {
     //to sample one eye of the original full screen texture
     //mapping UV(0-1) to either 0-.5 or .5-1 based on camIndex
     vec2 oTexCoord = fragUV;
-    oTexCoord.x = (oTexCoord.x * (1.f - 0.5*vrMode)) + 0.5f*camIndex;
+    oTexCoord.x = (oTexCoord.x * (1.f - 0.5f*vrMode)) + 0.5f*camIndex;
 
     // Compute the viewport size
     bool isRight = oTexCoord.x > 0.5;

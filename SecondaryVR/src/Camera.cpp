@@ -85,6 +85,11 @@ void Camera::updateDimensions(const VkExtent2D& swapChainExtent) {
 	const float scale = vrmode ? 0.5f : 1.f;
 	width = swapChainExtent.width * scale * (vrmode ? vrScalings[qualityIndex] : 1.f);
 	height = swapChainExtent.height * (vrmode ? vrScalings[qualityIndex] : 1.f);
+
+	//ensure that dims are even to avoid stencil issues
+	width = ((uint32_t)width & 1) == 1 ? width - 1 : width;
+	height = ((uint32_t)height & 1) == 1 ? height - 1 : height;
+
 	//width = swapChainExtent.width * scale * (false ? vrScalings[qualityIndex] : 1.f);
 	//height = swapChainExtent.height * (false ? vrScalings[qualityIndex] : 1.f);
 	updatePerspectiveProjection();
