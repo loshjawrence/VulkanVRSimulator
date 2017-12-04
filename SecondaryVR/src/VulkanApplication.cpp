@@ -565,14 +565,16 @@ void VulkanApplication::createPipelines() {
 	//post process pipelines
 	postProcessPipelines.resize(allShaders_PostProcessPipeline.size());
 	for (uint32_t i = 0; i < allShaders_PostProcessPipeline.size(); ++i) {
-		const uint32_t numImageSamplers = allShaders_PostProcessPipeline[i].second;
+		//const uint32_t numImageSamplers = allShaders_PostProcessPipeline[i].second;
+		const uint32_t numImageSamplers = std::get<1>(allShaders_PostProcessPipeline[i]);
+		const std::vector<std::string>& shaderPaths = std::get<0>(allShaders_PostProcessPipeline[i]);
 
 		//need an mapping from numimagesamplers to layouttypes index
 		if (i != allShaders_PostProcessPipeline.size() - 1) { //if not last output format should be 16F
-			postProcessPipelines[i] = PostProcessPipeline(allShaders_PostProcessPipeline[i].first,
+			postProcessPipelines[i] = PostProcessPipeline(shaderPaths,
 				allRenderPasses, contextInfo, &(VulkanDescriptor::postProcessLayoutTypes[numImageSamplers - 1]), false);
 		} else { //last one, outputImage should be swapchain format
-			postProcessPipelines[i] = PostProcessPipeline(allShaders_PostProcessPipeline[i].first,
+			postProcessPipelines[i] = PostProcessPipeline(shaderPaths,
 				allRenderPasses, contextInfo, &(VulkanDescriptor::postProcessLayoutTypes[numImageSamplers - 1]), true);
 		}
 	}

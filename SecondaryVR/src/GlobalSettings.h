@@ -75,7 +75,9 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Fo
 
 //name of shaders and number of input sampler images
 const bool useStencil = true;
-const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_PostProcessPipeline =
+
+//////////////////////////////////////SHADER PATHS,  num image inputs(should be vector of source stages)
+const std::vector< std::tuple<std::vector<std::string>, uint32_t> > allShaders_PostProcessPipeline =
 {
 	////passthrough
 	//{{"src/shaders/ppPassthrough.vert.spv",
@@ -85,17 +87,17 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Po
 	////STENCIL HOLE FILL
 	{{"src/shaders/ppPassthrough.vert.spv",
 	"src/shaders/ppStencilHoleFill.frag.spv"},
-	1}, //1 is num input sampler images to this pp stage
-
-	//Barrel/Aberration PRECALC MESH
-//	{{"src/shaders/ppBarrelAbMeshPreCalc.vert.spv",
-//	"src/shaders/ppBarrelAbMeshPreCalc.frag.spv"},
-//	1},
+	1}, 
 
 	//////Barrel/Aberration all in FRAG 
 	{{"src/shaders/ppPassthrough.vert.spv",
 	"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
 	1},
+
+	//Barrel/Aberration PRECALC MESH
+//	{{"src/shaders/ppBarrelAbMeshPreCalc.vert.spv",
+//	"src/shaders/ppBarrelAbMeshPreCalc.frag.spv"},
+//	1},
 
 	//Barrel/Aberration SHADER MESH (no precalc, done in shaders)
 	//{{"src/shaders/ppBarrelAbMesh2.vert.spv",
