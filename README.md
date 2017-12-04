@@ -32,6 +32,7 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 ![](SecondaryVR/img/stencilmask.png)
 ![](SecondaryVR/img/holefill.png)
 ![](SecondaryVR/img/all.png)
+![](SecondaryVR/img/debugHoleFill.png)
 ![](SecondaryVR/img/noBarrelNoStencil.png)
 ![](SecondaryVR/img/noBarrelStencilHoleFill.png)
 ![](SecondaryVR/img/radialdensitymask.png)
@@ -45,9 +46,9 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 * Yes, I thought it would be possible to just precalculate a stencil that masked out the places where the barrel filter wouldn't be sampling
 * The motivation for this was the expensive hole filling in radial density masking. 
 ** All color channels single pixel sample<br />
-![](SecondaryVR/img/preCalcBarrelSamplingMaskActualPixelsThatWillBeSampled.png)
+![](SecondaryVR/img/preCalcBarrelSamplingMaskActualPixelsThatWillBeSampled.bmp)
 ** All color channels sample pixel quad <br />
-![](SecondaryVR/img/preCalcBarrelSamplingMaskActualPixelsThatWIllBeSampled_TheirQuads.png)
+![](SecondaryVR/img/preCalcBarrelSamplingMaskActualPixelsThatWIllBeSampled_TheirQuads.bmp)
 
 
 # Adaptive Quality Filtering
