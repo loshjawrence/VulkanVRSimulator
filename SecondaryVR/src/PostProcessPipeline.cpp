@@ -24,11 +24,13 @@ PostProcessPipeline::PostProcessPipeline(const std::vector<std::string>& shaderp
 	//TODO: determine renderPass type here based on pipeline type? or will it all be one renderpass in the end?
 	createPipeline(renderPass, contextInfo, setLayouts);
 
+	//NEW
 	addCommandPools(contextInfo, 1);
 
 	allocateCommandBuffers(contextInfo);
 	createSemaphores(contextInfo);
 
+	//NEW
 	createOutputImages(contextInfo);
 	createFramebuffers(contextInfo, renderPass);
 }
@@ -38,21 +40,16 @@ PostProcessPipeline::~PostProcessPipeline() {
 }
 
 void PostProcessPipeline::createOutputImages(const VulkanContextInfo& contextInfo) {
-	outputImages.resize((contextInfo.camera.vrmode && !isPresent) ? contextInfo.camera.numQualitySettings : 1);
-
-	for (int k = 0; k < outputImages.size(); ++k) {
-		outputImages[k].resize(contextInfo.swapChainImages.size());
-		for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-
-			//TODO: if flag is present then use swapchain stuff otherwise 16F
-			if (!isPresent) {
-				VkExtent2D renderTargetExtent = contextInfo.camera.vrmode ? contextInfo.camera.renderTargetExtent[k] : contextInfo.camera.renderTargetExtentNoVR;
-				outputImages[k][i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, renderTargetExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
-			} else {
-				outputImages[k][i].image = contextInfo.swapChainImages[i];
-				outputImages[k][i].imageView = contextInfo.swapChainImageViews[i];
-				outputImages[k][i].extent = contextInfo.swapChainExtent;
-			}
+	outputImages.resize(contextInfo.swapChainImages.size());
+	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		
+		//TODO: if flag is present then use swapchain stuff otherwise 16F
+		if (!isPresent) {
+			outputImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.camera.renderTargetExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
+		} else {
+			outputImages[i].image = contextInfo.swapChainImages[i];
+			outputImages[i].imageView = contextInfo.swapChainImageViews[i];
+			outputImages[i].extent = contextInfo.swapChainExtent;
 		}
 	}
 }
@@ -75,57 +72,47 @@ void PostProcessPipeline::addCommandPools(const VulkanContextInfo& contextInfo, 
 }
 
 void PostProcessPipeline::createFramebuffers(const VulkanContextInfo& contextInfo, const VulkanRenderPass& renderPass) {
+	framebuffers.resize(contextInfo.swapChainImages.size());
+	if (isPresent) {
+		for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+			framebuffers[i] = contextInfo.swapChainFramebuffers[i];
+		}
+	} else {
+		for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+			VkFramebufferCreateInfo framebufferCreateInfo = {};
+			framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+			framebufferCreateInfo.pNext = NULL;
+			
+			//TODO: if last make present otherwise normal post process
+			framebufferCreateInfo.renderPass = renderPass.renderPassPostProcess;
+			framebufferCreateInfo.pAttachments = &outputImages[i].imageView;
+			framebufferCreateInfo.attachmentCount = 1;
 
-	framebuffers.resize((contextInfo.camera.vrmode && !isPresent) ? contextInfo.camera.numQualitySettings : 1);
+			framebufferCreateInfo.width = contextInfo.camera.renderTargetExtent.width;
+			framebufferCreateInfo.height = contextInfo.camera.renderTargetExtent.height;
+			framebufferCreateInfo.layers = 1;
 
-	for (int k = 0; k < framebuffers.size(); ++k) {//adaptive quality
-		framebuffers[k].resize(contextInfo.swapChainImages.size());
-		VkExtent2D renderTargetExtent = contextInfo.camera.vrmode ? contextInfo.camera.renderTargetExtent[k] : contextInfo.camera.renderTargetExtentNoVR;
-		if (isPresent) {
-			for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-				framebuffers[k][i] = contextInfo.swapChainFramebuffers[i];
-			}
-		} else {
-			for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-				VkFramebufferCreateInfo framebufferCreateInfo = {};
-				framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-				framebufferCreateInfo.pNext = NULL;
-
-				//TODO: if last make present otherwise normal post process
-				framebufferCreateInfo.renderPass = renderPass.renderPassPostProcess;
-				framebufferCreateInfo.pAttachments = &outputImages[k][i].imageView;
-				framebufferCreateInfo.attachmentCount = 1;
-
-				framebufferCreateInfo.width = renderTargetExtent.width;
-				framebufferCreateInfo.height = renderTargetExtent.height;
-				framebufferCreateInfo.layers = 1;
-
-				if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &framebuffers[k][i]) != VK_SUCCESS) {
-					std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create framebuffer!";
-					throw std::runtime_error(ss.str());
-				}
+			if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &framebuffers[i]) != VK_SUCCESS) {
+				std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create framebuffer!";
+				throw std::runtime_error(ss.str());
 			}
 		}
 	}
 }
 
 void PostProcessPipeline::allocateCommandBuffers(const VulkanContextInfo& contextInfo) {
+	commandBuffers.resize(contextInfo.swapChainFramebuffers.size());
+	//clean up before record? no need, state is not maintained
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = commandPools[0];
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	//allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+	allocInfo.commandBufferCount = commandBuffers.size();
 
-	commandBuffers.resize((contextInfo.camera.vrmode && !isPresent) ? contextInfo.camera.numQualitySettings : 1);
-	for (int k = 0; k < commandBuffers.size(); ++k) {
-		commandBuffers[k].resize(contextInfo.swapChainFramebuffers.size());
-		//clean up before record? no need, state is not maintained
-		VkCommandBufferAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-		allocInfo.commandPool = commandPools[0];
-		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-		//allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-		allocInfo.commandBufferCount = commandBuffers.size();
-
-		if (vkAllocateCommandBuffers(contextInfo.device, &allocInfo, commandBuffers[k].data()) != VK_SUCCESS) {
-			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to alloc pipeline command buffers!";
-			throw std::runtime_error(ss.str());
-		}
+	if (vkAllocateCommandBuffers(contextInfo.device, &allocInfo, commandBuffers.data()) != VK_SUCCESS) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to alloc pipeline command buffers!";
+		throw std::runtime_error(ss.str());
 	}
 }
 
@@ -176,11 +163,9 @@ void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 
-	const int k = contextInfo.camera.qualityIndex;
-	VkExtent2D renderTargetExtent = contextInfo.camera.vrmode ? contextInfo.camera.renderTargetExtent[k] : contextInfo.camera.renderTargetExtentNoVR;
 	VkRect2D scissor = {};
 	scissor.offset = { 0, 0 };
-	scissor.extent = isPresent ? contextInfo.swapChainExtent : renderTargetExtent;
+	scissor.extent = isPresent ? contextInfo.swapChainExtent : contextInfo.camera.renderTargetExtent;
 
 	VkPipelineViewportStateCreateInfo viewportState = {};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
@@ -310,17 +295,123 @@ VkShaderModule PostProcessPipeline::createShaderModule( const std::vector<char>&
 	return shaderModule;
 }
 
+//void PostProcessPipeline::recordCommandBufferSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
+//	const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
+//	const Model& model, const Mesh& mesh, const bool vrmode)
+//{
+//
+//	if (!recording) {
+//		beginRecordingSecondary(inheritanceInfo, imageIndex, contextInfo);
+//	} 
+//
+//	const VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
+//	const VkDeviceSize offsets[] = { 0 };
+//	vkCmdBindVertexBuffers(commandBuffers[imageIndex], 0, 1, vertexBuffers, offsets);
+//
+//	vkCmdBindIndexBuffer(commandBuffers[imageIndex], mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+//
+//	vkCmdBindDescriptorSets(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
+//
+//	const int camIndex = 0;
+//	const PostProcessPushConstant pushconstant = { camIndex << 1 };
+//	vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+//
+//	VkViewport viewport = {}; VkRect2D scissor = {};
+//	getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+//	vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
+//	vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
+//
+//	vkCmdDrawIndexed(commandBuffers[imageIndex], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+//
+//	if (vrmode) {
+//		const uint32_t camIndex = 1;
+//		const PostProcessPushConstant pushconstant = { camIndex << 1 };
+//		vkCmdPushConstants(commandBuffers[imageIndex], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+//
+//		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+//		vkCmdSetViewport(commandBuffers[imageIndex], 0, 1, &viewport);
+//		vkCmdSetScissor(commandBuffers[imageIndex], 0, 1, &scissor);
+//
+//		vkCmdDrawIndexed(commandBuffers[imageIndex], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+//	}
+//}
+//
+//void PostProcessPipeline::beginRecordingSecondary(const VkCommandBufferInheritanceInfo& inheritanceInfo,
+//	uint32_t imageIndex, const VulkanContextInfo& contextInfo) 
+//{
+//	recording = true;
+//	VkCommandBufferBeginInfo beginInfo = {};
+//	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+//	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+//	//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+//	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+//	beginInfo.pInheritanceInfo = &inheritanceInfo;
+//
+//	vkBeginCommandBuffer(commandBuffers[imageIndex], &beginInfo);
+//
+//	vkCmdBindPipeline(commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+//}
+//
+//
+//bool PostProcessPipeline::endRecordingSecondary(const uint32_t imageIndex) {
+//	if (recording) {
+//		recording = false;
+//
+//		if (vkEndCommandBuffer(commandBuffers[imageIndex]) != VK_SUCCESS) {
+//			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to record command buffer!";
+//			throw std::runtime_error(ss.str());
+//		}
+//		return true;
+//	}
+//	return false;
+//}
+
+//void PostProcessPipeline::recordCommandBufferPrimary(const VkCommandBuffer& primaryCmdBuffer, 
+//	const uint32_t imageIndex, const VulkanContextInfo& contextInfo,
+//	 const Model& model, const Mesh& mesh, const bool vrmode)
+//{
+//	vkCmdBindPipeline(primaryCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+//
+//	const VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
+//	const VkDeviceSize offsets[] = { 0 };
+//	vkCmdBindVertexBuffers(primaryCmdBuffer, 0, 1, vertexBuffers, offsets);
+//	vkCmdBindIndexBuffer(primaryCmdBuffer, mesh.indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+//
+//	vkCmdBindDescriptorSets(primaryCmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &mesh.descriptor.descriptorSet, 0, nullptr);
+//
+//	const uint32_t camIndex = 0;
+//	const PostProcessPushConstant pushconstant = { camIndex << 1 };
+//	vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+//
+//	VkViewport viewport = {}; VkRect2D scissor = {};
+//	getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+//	vkCmdSetViewport(primaryCmdBuffer, 0, 1, &viewport);
+//	vkCmdSetScissor(primaryCmdBuffer, 0, 1, &scissor);
+//
+//	vkCmdDrawIndexed(primaryCmdBuffer, static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+//
+//	if (vrmode) {
+//		const uint32_t camIndex = 1;
+//		const PostProcessPushConstant pushconstant = { camIndex << 1 };
+//		vkCmdPushConstants(primaryCmdBuffer, pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+//
+//		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, vrmode);
+//		vkCmdSetViewport(primaryCmdBuffer, 0, 1, &viewport);
+//		vkCmdSetScissor(primaryCmdBuffer, 0, 1, &scissor);
+//
+//		vkCmdDrawIndexed(primaryCmdBuffer, static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+//	}
+//}
+
 void PostProcessPipeline::getViewportAndScissor(VkViewport& outViewport, VkRect2D& outScissor, 
-	const VulkanContextInfo& contextInfo, const uint32_t camIndex, const bool vrmode, const VkExtent2D& renderTargetExtent) {
+	const VulkanContextInfo& contextInfo, const uint32_t camIndex, const bool vrmode) {
 	outViewport.minDepth = 0.0f;
 	outViewport.maxDepth = 1.0f;
 
-	//const float width = isPresent ? 
-	//	(contextInfo.camera.vrmode ? contextInfo.swapChainExtent.width * 0.5f : contextInfo.swapChainExtent.width)
-	//	: contextInfo.camera.width;
-	//const float height = isPresent ? contextInfo.swapChainExtent.height : contextInfo.camera.height;
-	const float width = contextInfo.camera.vrmode ? renderTargetExtent.width * 0.5f : renderTargetExtent.width;
-	const float height = renderTargetExtent.height;
+	const float width = isPresent ? 
+		(contextInfo.camera.vrmode ? contextInfo.swapChainExtent.width * 0.5f : contextInfo.swapChainExtent.width)
+		: contextInfo.camera.width;
+	const float height = isPresent ? contextInfo.swapChainExtent.height : contextInfo.camera.height;
 	if (vrmode) {
 		outViewport.width = width;
 		outViewport.height = height;
@@ -341,122 +432,115 @@ void PostProcessPipeline::getViewportAndScissor(VkViewport& outViewport, VkRect2
 void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& contextInfo, 
 	const VulkanRenderPass& renderPass, const std::vector<Mesh>& meshes) 
 {
-	for (int k = 0; k < commandBuffers.size(); ++k) {
-		for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-			VkCommandBufferAllocateInfo allocInfo = {};
-			allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-			allocInfo.commandPool = commandPools[0];
-			allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-			//allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
-			allocInfo.commandBufferCount = 1;
+	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.commandPool = commandPools[0];
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		//allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+		allocInfo.commandBufferCount = 1;
 
-			if (vkAllocateCommandBuffers(contextInfo.device, &allocInfo, &commandBuffers[k][i]) != VK_SUCCESS)
-			{
-				throw std::runtime_error("failed to allocate command buffers!");
-			}
+		if (vkAllocateCommandBuffers(contextInfo.device, &allocInfo, &commandBuffers[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to allocate command buffers!");
+		}
 
-			VkCommandBufferBeginInfo beginInfo = {};
-			beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-			beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-			//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
-			//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
-			beginInfo.pInheritanceInfo = nullptr; // Optional
-
-
-			vkBeginCommandBuffer(commandBuffers[k][i], &beginInfo);
-
-			std::array<VkClearValue, 1> clearValues = {};
-			clearValues[0].color = { 0.0f, 0.0f, 0.0f, 0.0f };
-			//clearValues[1].depthStencil = { 1.0f, 0 };
-
-			VkRenderPassBeginInfo renderPassInfo = {};
-			renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-			renderPassInfo.renderPass = isPresent ? renderPass.renderPassPostProcessPresent : renderPass.renderPassPostProcess;
-			renderPassInfo.framebuffer = framebuffers[k][i];
-			renderPassInfo.renderArea.offset = { 0, 0 };
-			VkExtent2D renderTargetExtent = contextInfo.camera.vrmode ? contextInfo.camera.renderTargetExtent[k] : contextInfo.camera.renderTargetExtentNoVR;
-			renderTargetExtent = isPresent ? contextInfo.swapChainExtent : renderTargetExtent;
-			renderPassInfo.renderArea.extent = renderTargetExtent;
-
-			renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-			renderPassInfo.pClearValues = clearValues.data();
-
-			vkCmdBeginRenderPass(commandBuffers[k][i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-			vkCmdBindPipeline(commandBuffers[k][i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+		//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		beginInfo.pInheritanceInfo = nullptr; // Optional
 
 
-			vkCmdBindDescriptorSets(commandBuffers[k][i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &(inputDescriptors[k][i].descriptorSet), 0, nullptr);
+		vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
 
-			//VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
-			//VkBuffer indexBuffer = mesh.indexBuffer;
-			VkBuffer vertexBuffers[] = { meshes[0].vertexBuffer };
-			VkBuffer indexBuffer = meshes[0].indexBuffer;
+		std::array<VkClearValue, 1> clearValues = {};
+		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 0.0f };
+		//clearValues[1].depthStencil = { 1.0f, 0 };
+
+		VkRenderPassBeginInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = isPresent ? renderPass.renderPassPostProcessPresent : renderPass.renderPassPostProcess;
+		renderPassInfo.framebuffer = framebuffers[i];
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		renderPassInfo.renderArea.extent = isPresent ? contextInfo.swapChainExtent : contextInfo.camera.renderTargetExtent;
+
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassInfo.pClearValues = clearValues.data();
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &inputDescriptors[i].descriptorSet, 0, nullptr);
+
+		//VkBuffer vertexBuffers[] = { mesh.vertexBuffer };
+		//VkBuffer indexBuffer = mesh.indexBuffer;
+		VkBuffer vertexBuffers[] = { meshes[0].vertexBuffer };
+		VkBuffer indexBuffer = meshes[0].indexBuffer;
+		VkDeviceSize offsets[] = { 0 };
+
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+		
+		const uint32_t camIndex = 0;
+		const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode), 
+														contextInfo.camera.renderTargetExtent.width, contextInfo.camera.renderTargetExtent.height};
+		vkCmdPushConstants(commandBuffers[i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+
+		VkViewport viewport = {}; VkRect2D scissor = {};
+		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, contextInfo.camera.vrmode);
+		vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
+		vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
+
+		//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(meshes[0].mIndices.size()), 1, 0, 0, 0);
+
+		if (contextInfo.camera.vrmode) {
+			//bind other precalc mesh(can't just use the same one since not the same(asymmetrical/mirrored)
+			const uint32_t camIndex = 1;
+			VkBuffer vertexBuffers[] = { meshes[camIndex].vertexBuffer };
+			VkBuffer indexBuffer = meshes[camIndex].indexBuffer;
 			VkDeviceSize offsets[] = { 0 };
 
-			vkCmdBindVertexBuffers(commandBuffers[k][i], 0, 1, vertexBuffers, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[k][i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-
-			const uint32_t camIndex = 0;
 			const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode),
-															renderTargetExtent.width, renderTargetExtent.height };
-			vkCmdPushConstants(commandBuffers[k][i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+															contextInfo.camera.renderTargetExtent.width, contextInfo.camera.renderTargetExtent.height};
+			vkCmdPushConstants(commandBuffers[i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
+			getViewportAndScissor(viewport, scissor, contextInfo, camIndex, contextInfo.camera.vrmode);
+			vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
+			vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
 
-			VkViewport viewport = {}; VkRect2D scissor = {};
-			getViewportAndScissor(viewport, scissor, contextInfo, camIndex, contextInfo.camera.vrmode, renderTargetExtent);
-			vkCmdSetViewport(commandBuffers[k][i], 0, 1, &viewport);
-			vkCmdSetScissor(commandBuffers[k][i], 0, 1, &scissor);
+			//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(meshes[camIndex].mIndices.size()), 1, 0, 0, 0);
+		}
 
-			//vkCmdDrawIndexed(commandBuffers[k][i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
-			vkCmdDrawIndexed(commandBuffers[k][i], static_cast<uint32_t>(meshes[0].mIndices.size()), 1, 0, 0, 0);
+		vkCmdEndRenderPass(commandBuffers[i]);
 
-			if (contextInfo.camera.vrmode) {
-				//bind other precalc mesh(can't just use the same one since not the same(asymmetrical/mirrored)
-				const uint32_t camIndex = 1;
-				VkBuffer vertexBuffers[] = { meshes[camIndex].vertexBuffer };
-				VkBuffer indexBuffer = meshes[camIndex].indexBuffer;
-				VkDeviceSize offsets[] = { 0 };
-
-				vkCmdBindVertexBuffers(commandBuffers[k][i], 0, 1, vertexBuffers, offsets);
-				vkCmdBindIndexBuffer(commandBuffers[k][i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
-
-				const PostProcessPushConstant pushconstant = { camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode),
-																renderTargetExtent.width, renderTargetExtent.height };
-				vkCmdPushConstants(commandBuffers[k][i], pipelineLayout, PostProcessPushConstant::stages, 0, sizeof(PostProcessPushConstant), (const void*)&pushconstant);
-				getViewportAndScissor(viewport, scissor, contextInfo, camIndex, contextInfo.camera.vrmode, renderTargetExtent);
-				vkCmdSetViewport(commandBuffers[k][i], 0, 1, &viewport);
-				vkCmdSetScissor(commandBuffers[k][i], 0, 1, &scissor);
-
-				//vkCmdDrawIndexed(commandBuffers[k][i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
-				vkCmdDrawIndexed(commandBuffers[k][i], static_cast<uint32_t>(meshes[camIndex].mIndices.size()), 1, 0, 0, 0);
-			}
-
-			vkCmdEndRenderPass(commandBuffers[k][i]);
-
-			if (vkEndCommandBuffer(commandBuffers[k][i]) != VK_SUCCESS) {
-				std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to record command buffer!";
-				throw std::runtime_error(ss.str());
-			}
-		}//i
-	}//k
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to record command buffer!";
+			throw std::runtime_error(ss.str());
+		}
+	}
 }
 
 void PostProcessPipeline::createInputDescriptors(const VulkanContextInfo& contextInfo, 
-	const std::vector< std::vector<VulkanImage> >& vulkanImages)
+	const std::vector<VulkanImage>& vulkanImages)
 {
-	inputDescriptors.resize(vulkanImages.size());
-	for (int k = 0; k < vulkanImages.size(); ++k) {//adaptive quality
-		inputDescriptors[k].resize(contextInfo.swapChainImages.size());
-		for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-			inputDescriptors[k][i].numImageSamplers = 1;//TODO: determine num image samplers of previous stage from size of VulkanImage vector
-			inputDescriptors[k][i].createDescriptorSetLayoutPostProcess(contextInfo);
-			inputDescriptors[k][i].createDescriptorPoolPostProcess(contextInfo);
+	inputDescriptors.resize(contextInfo.swapChainImages.size());
+	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		inputDescriptors[i].numImageSamplers = 1;//TODO: determine num image samplers of previous stage from size of VulkanImage vector
+		inputDescriptors[i].createDescriptorSetLayoutPostProcess(contextInfo);
+		inputDescriptors[i].createDescriptorPoolPostProcess(contextInfo);
 
-			//may want to extent this to include cases where a post process has multiple render targets and therefore VulkanImages
-			const std::vector<VulkanImage>& vulkanImagesAtSwapIndex = { vulkanImages[k][i] };
-			inputDescriptors[k][i].createDescriptorSetPostProcess(contextInfo, vulkanImagesAtSwapIndex);
-		}
+		//may want to extent this to include cases where a post process has multiple render targets and therefore VulkanImages
+		const std::vector<VulkanImage>& vulkanImagesAtSwapIndex = { vulkanImages[i] };
+		inputDescriptors[i].createDescriptorSetPostProcess(contextInfo, vulkanImagesAtSwapIndex);
 	}
 }
 
@@ -481,9 +565,7 @@ void PostProcessPipeline::destroyVulkanPipeline(const VulkanContextInfo& context
 }
 
 void PostProcessPipeline::freeCommandBuffers(const VulkanContextInfo& contextInfo) {
-	for (int k = 0; k < commandBuffers.size(); ++k) {
-		vkFreeCommandBuffers(contextInfo.device, commandPools[0], static_cast<uint32_t>(commandBuffers[k].size()), commandBuffers[k].data());
-	}
+	vkFreeCommandBuffers(contextInfo.device, commandPools[0], static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 }
 
 void PostProcessPipeline::destroyPipeline(const VulkanContextInfo& contextInfo) {

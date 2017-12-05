@@ -1,0 +1,11 @@
+
+properties->item type = Custom Build Tool
+
+command Line:
+$(VULKAN_SDK)\Bin\glslangValidator -V -o %(Identity).spv %(Identity)
+
+Outputs:
+$(SolutionDir)$(ProjectName)%(Identity).spv
+
+Link objects: 
+No

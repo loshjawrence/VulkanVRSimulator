@@ -83,8 +83,8 @@ private:
 	//Vulkan components
 	VulkanContextInfo contextInfo;
 	std::vector<VulkanGraphicsPipeline> forwardPipelines;
-	std::vector< std::vector<VkFramebuffer> > forwardPipelinesFramebuffers;
-	std::vector< std::vector<VulkanImage> >   forwardPipelinesVulkanImages;
+	std::vector<VkFramebuffer> forwardPipelinesFramebuffers;
+	std::vector<VulkanImage> forwardPipelinesVulkanImages;
 	VulkanRenderPass allRenderPasses;
 	std::vector<PostProcessPipeline> postProcessPipelines;
 

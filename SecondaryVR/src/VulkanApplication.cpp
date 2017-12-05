@@ -73,8 +73,8 @@ void VulkanApplication::loadModels() {
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
 		//defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
-//		defaultScene[i] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
-//			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
@@ -212,11 +212,9 @@ void VulkanApplication::drawFrame() {
 	postProcessSubmitInfo.pWaitDstStageMask = &postProcessWaitStages[0];
 	postProcessSubmitInfo.commandBufferCount = 1;
 
-	int k = contextInfo.camera.vrmode ? contextInfo.camera.qualityIndex : 0;
-
 	for (auto& pipeline : postProcessPipelines) {
 		postProcessSubmitInfo.pWaitSemaphores = &postProcessWaitSemaphores[0];
-		postProcessSubmitInfo.pCommandBuffers = &pipeline.commandBuffers[pipeline.isPresent ? 0 : k][imageIndex];
+		postProcessSubmitInfo.pCommandBuffers = &pipeline.commandBuffers[imageIndex];
 		std::vector<VkSemaphore> postProcessSignalSemaphores = { pipeline.renderFinishedSemaphore };
 		postProcessSubmitInfo.signalSemaphoreCount = postProcessSignalSemaphores.size();
 		postProcessSubmitInfo.pSignalSemaphores = &postProcessSignalSemaphores[0];
@@ -259,12 +257,11 @@ void VulkanApplication::drawFrame() {
 
 
 void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& inheritanceInfo, const uint32_t imageIndex) {
-	const int k = contextInfo.camera.vrmode ? contextInfo.camera.qualityIndex : 0;
 
 	inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	inheritanceInfo.pNext = NULL;
 	//inheritanceInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
-	inheritanceInfo.framebuffer = forwardPipelinesFramebuffers[k][imageIndex];
+	inheritanceInfo.framebuffer = forwardPipelinesFramebuffers[imageIndex];
 	inheritanceInfo.renderPass = (contextInfo.camera.vrmode && useStencil) ? 
 		allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
 	inheritanceInfo.occlusionQueryEnable = VK_FALSE;
@@ -281,11 +278,10 @@ void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& in
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = inheritanceInfo.renderPass;
 	//renderPassInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
-	renderPassInfo.framebuffer = forwardPipelinesFramebuffers[k][imageIndex];
+	renderPassInfo.framebuffer = forwardPipelinesFramebuffers[imageIndex];
 	renderPassInfo.renderArea.offset = { 0, 0 };
 //	renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
-	VkExtent2D renderTargetExtent = contextInfo.camera.vrmode ? contextInfo.camera.renderTargetExtent[k] : contextInfo.camera.renderTargetExtentNoVR;
-	renderPassInfo.renderArea.extent = renderTargetExtent;
+	renderPassInfo.renderArea.extent = contextInfo.camera.renderTargetExtent;
 
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -301,8 +297,6 @@ void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& in
 }
 
 void VulkanApplication::beginRecordingPrimary(const uint32_t imageIndex) {
-	const int k = contextInfo.camera.vrmode ? contextInfo.camera.qualityIndex : 0;
-
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -314,11 +308,10 @@ void VulkanApplication::beginRecordingPrimary(const uint32_t imageIndex) {
 	renderPassInfo.renderPass = (contextInfo.camera.vrmode && useStencil) ? 
 		allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
 	//renderPassInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
-	renderPassInfo.framebuffer = forwardPipelinesFramebuffers[k][imageIndex];
+	renderPassInfo.framebuffer = forwardPipelinesFramebuffers[imageIndex];
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	//renderPassInfo.renderArea.extent = contextInfo.swapChainExtent;
-	VkExtent2D renderTargetExtent = contextInfo.camera.vrmode ? contextInfo.camera.renderTargetExtent[k] : contextInfo.camera.renderTargetExtentNoVR;
-	renderPassInfo.renderArea.extent = renderTargetExtent;
+	renderPassInfo.renderArea.extent = contextInfo.camera.renderTargetExtent;
 
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
@@ -572,6 +565,7 @@ void VulkanApplication::createPipelines() {
 	//post process pipelines
 	postProcessPipelines.resize(allShaders_PostProcessPipeline.size());
 	for (uint32_t i = 0; i < allShaders_PostProcessPipeline.size(); ++i) {
+		//const uint32_t numImageSamplers = allShaders_PostProcessPipeline[i].second;
 		const uint32_t numImageSamplers = std::get<1>(allShaders_PostProcessPipeline[i]);
 		const std::vector<std::string>& shaderPaths = std::get<0>(allShaders_PostProcessPipeline[i]);
 
@@ -608,45 +602,52 @@ void VulkanApplication::createPipelines() {
 }
 
 void VulkanApplication::initForwardPipelinesVulkanImagesAndFramebuffers() {
-	const int numForwardImages = contextInfo.camera.vrmode ? contextInfo.camera.numQualitySettings : 1;
+	forwardPipelinesVulkanImages.resize(contextInfo.swapChainImages.size());
+	forwardPipelinesFramebuffers.resize(contextInfo.swapChainImages.size());
+	//VkExtent2D renderTargetExent;
+	//float vrScaleXback = contextInfo.camera.vrmode ? 2.f : 1.f;
+	//renderTargetExent.width = static_cast<uint32_t>(vrScaleXback * contextInfo.camera.width);
+	//renderTargetExent.height = static_cast<uint32_t>(contextInfo.camera.height);
+	for (uint32_t i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		//forwardPipelinesVulkanImages[i].image = contextInfo.swapChainImages[i];
+		//forwardPipelinesVulkanImages[i].imageView = contextInfo.swapChainImageViews[i];
+		//forwardPipelinesVulkanImages[i].extent = contextInfo.swapChainExtent;
+		//forwardPipelinesVulkanImages[i].format = contextInfo.swapChainImageFormat;
 
-	forwardPipelinesVulkanImages.resize(numForwardImages);
-	forwardPipelinesFramebuffers.resize(numForwardImages);
+		//TODO: if flag is present then use swapchain format otherwise 16F
+		//forwardPipelinesVulkanImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.swapChainExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
+		forwardPipelinesVulkanImages[i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, contextInfo.camera.renderTargetExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
 
+	}
 
-	for (int k = 0; k < numForwardImages; ++k) {
-		forwardPipelinesVulkanImages[k].resize(contextInfo.swapChainImages.size());
-		forwardPipelinesFramebuffers[k].resize(contextInfo.swapChainImages.size());
-		VkExtent2D renderTargetExtent = contextInfo.camera.vrmode ?
-			contextInfo.camera.renderTargetExtent[k] : contextInfo.camera.renderTargetExtentNoVR;
-		const int j = contextInfo.camera.vrmode ? k : 0;
+	//for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+	//	forwardPipelinesFramebuffers[i] = contextInfo.swapChainFramebuffers[i];
+	//}
 
-		for (uint32_t i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-			forwardPipelinesVulkanImages[k][i] = VulkanImage(IMAGETYPE::COLOR_ATTACHMENT, renderTargetExtent, VK_FORMAT_R16G16B16A16_SFLOAT, contextInfo);
-		}
+	for (uint32_t i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		VkFramebufferCreateInfo framebufferCreateInfo = {};
+		framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferCreateInfo.pNext = NULL;
 
-		for (uint32_t i = 0; i < contextInfo.swapChainImages.size(); ++i) {
-			VkFramebufferCreateInfo framebufferCreateInfo = {};
-			framebufferCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-			framebufferCreateInfo.pNext = NULL;
+		std::vector<VkImageView> attachments = { forwardPipelinesVulkanImages[i].imageView, contextInfo.depthImage.imageView };
+		framebufferCreateInfo.renderPass = (contextInfo.camera.vrmode && useStencil) ? 
+			allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
+		framebufferCreateInfo.pAttachments = attachments.data();
+		framebufferCreateInfo.attachmentCount = attachments.size();
+		//framebufferCreateInfo.width = contextInfo.swapChainExtent.width;
+		//framebufferCreateInfo.height = contextInfo.swapChainExtent.height;
+		//framebufferCreateInfo.width = static_cast<uint32_t>(contextInfo.camera.width);
+		//framebufferCreateInfo.height = static_cast<uint32_t>(contextInfo.camera.height);
+		framebufferCreateInfo.width = contextInfo.camera.renderTargetExtent.width;
+		framebufferCreateInfo.height = contextInfo.camera.renderTargetExtent.height;
+		framebufferCreateInfo.layers = 1;
 
-			std::vector<VkImageView> attachments = { forwardPipelinesVulkanImages[k][i].imageView, contextInfo.depthImage[j].imageView };
-			framebufferCreateInfo.renderPass = (contextInfo.camera.vrmode && useStencil) ?
-				allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
-			framebufferCreateInfo.pAttachments = attachments.data();
-			framebufferCreateInfo.attachmentCount = attachments.size();
-			framebufferCreateInfo.width = renderTargetExtent.width;
-			framebufferCreateInfo.height = renderTargetExtent.height;
-			framebufferCreateInfo.layers = 1;
-
-			if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &forwardPipelinesFramebuffers[k][i]) != VK_SUCCESS) {
-				std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create framebuffer!";
-				throw std::runtime_error(ss.str());
-			}
+		if (vkCreateFramebuffer(contextInfo.device, &framebufferCreateInfo, nullptr, &forwardPipelinesFramebuffers[i]) != VK_SUCCESS) {
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to create framebuffer!";
+			throw std::runtime_error(ss.str());
 		}
 	}
 }
-
 uint32_t VulkanApplication::getForwardPipelineIndexFromTextureMapFlags(const uint32_t textureMapFlags) {
 	for (uint32_t i = 0; i < textureMapFlagsToForwardPipelineIndex.size(); ++i) {
 		if ((textureMapFlags & textureMapFlagsToForwardPipelineIndex[i]) == textureMapFlags) {
@@ -656,9 +657,7 @@ uint32_t VulkanApplication::getForwardPipelineIndexFromTextureMapFlags(const uin
 }
 
 void VulkanApplication::cleanupSwapChain() {
-	for (int i = 0; i < contextInfo.numDepthImages; ++i) {
-		contextInfo.depthImage[i].destroyVulkanImage(contextInfo);
-	}
+	contextInfo.depthImage.destroyVulkanImage(contextInfo);
 
 	destroyPipelines();
 	destroyOffScreenRenderTargets();
@@ -670,20 +669,15 @@ void VulkanApplication::cleanupSwapChain() {
 }
 
 void VulkanApplication::destroyOffScreenRenderTargets() {
-
-	for (int i = 0; i < forwardPipelinesVulkanImages.size(); ++i) {
-		for (auto& image : forwardPipelinesVulkanImages[i]) {
-			image.destroyVulkanImage(contextInfo);
-			//depthImage destroyed before this call
-		}
+	for (auto& image : forwardPipelinesVulkanImages) {
+		image.destroyVulkanImage(contextInfo);
+		//depthImage destroyed before this call
 	}
 
 	//dont need to do the last one since it refers to the swap chain
 	for (uint32_t i = 0; i < postProcessPipelines.size() - 1; ++i) {
-		for (int k = 0; k < postProcessPipelines[i].outputImages.size(); ++k) {
-			for (auto& image : postProcessPipelines[i].outputImages[k]) {
-				image.destroyVulkanImage(contextInfo);
-			}
+		for (auto& image : postProcessPipelines[i].outputImages) {
+			image.destroyVulkanImage(contextInfo);
 		}
 	}
 }

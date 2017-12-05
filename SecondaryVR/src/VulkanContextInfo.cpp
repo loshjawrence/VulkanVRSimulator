@@ -26,7 +26,6 @@ VulkanContextInfo::VulkanContextInfo(GLFWwindow* window)
 	determineDepthFormat();
 	camera = Camera();
 	initStencils();
-	depthImage.resize(camera.numQualitySettings);
 	createDepthImage();
 }
 
@@ -234,21 +233,17 @@ void VulkanContextInfo::acquireDeviceQueues() {
 void VulkanContextInfo::initStencils() {
 	radialDensityMasks.resize(camera.numQualitySettings);
 	for (int i = 0; i < camera.numQualitySettings; ++i) {
-		//radialDensityMasks[i]			= PreMadeStencil(camera.vrScalings[i], StencilType::RadialDensityMask);
-		radialDensityMasks[i]			= PreMadeStencil(*this, i, StencilType::RadialDensityMask);
+		radialDensityMasks[i]			= PreMadeStencil(*this,i, StencilType::RadialDensityMask);
 	}
 }
 
 void VulkanContextInfo::createDepthImage() {
 	determineDepthFormat();
 	if (!camera.vrmode) {
-		numDepthImages = 1;
-		depthImage[0] = VulkanImage(IMAGETYPE::DEPTH, camera.renderTargetExtentNoVR, depthFormat, *this, std::string(""));
+		depthImage = VulkanImage(IMAGETYPE::DEPTH, camera.renderTargetExtent, depthFormat, *this, std::string(""));
 	} else {
-		numDepthImages = camera.numQualitySettings;
-		for (int i = 0;  i < camera.numQualitySettings; ++i) {
-			depthImage[i] = VulkanImage(IMAGETYPE::DEPTH, camera.renderTargetExtent[i], depthFormat, *this, radialDensityMasks[i].filename);
-		}
+		const int i = camera.qualityIndex;
+		depthImage = VulkanImage(IMAGETYPE::DEPTH, camera.renderTargetExtent, depthFormat, *this, radialDensityMasks[i].filename);
 	}
 }
 

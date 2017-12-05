@@ -80,19 +80,19 @@ const bool useStencil = true;
 const std::vector< std::tuple<std::vector<std::string>, uint32_t> > allShaders_PostProcessPipeline =
 {
 	////passthrough
+	//{{"src/shaders/ppPassthrough.vert.spv",
+	//"src/shaders/ppPassthrough.frag.spv"},
+	//1}, //1 is num input sampler images to this pp stage
+
+	////STENCIL HOLE FILL
 	{{"src/shaders/ppPassthrough.vert.spv",
-	"src/shaders/ppPassthrough.frag.spv"},
-	1}, //1 is num input sampler images to this pp stage
+	"src/shaders/ppStencilHoleFill.frag.spv"},
+	1}, 
 
-	//////STENCIL HOLE FILL
-	//{{"src/shaders/ppPassthrough.vert.spv",
-	//"src/shaders/ppStencilHoleFill.frag.spv"},
-	//1}, 
-
-	//////////Barrel/Aberration all in FRAG 
-	//{{"src/shaders/ppPassthrough.vert.spv",
-	//"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
-	//1},
+	//////Barrel/Aberration all in FRAG 
+	{{"src/shaders/ppPassthrough.vert.spv",
+	"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
+	1},
 
 	//Barrel/Aberration PRECALC MESH
 //	{{"src/shaders/ppBarrelAbMeshPreCalc.vert.spv",
