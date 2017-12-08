@@ -65,7 +65,7 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 ** Resolution scale 0.5<br />
 ![](SecondaryVR/img/adaptiveQuality0.5.png)
 
-# Asynchonous Time Warp (ATW)
+# Asynchronous Time Warp (ATW)
 * In another thread, prepare last frame's final render target, depth buffer, and view matrix. If we are going to miss vsync with our current render task, prempt the gpu and warp old fragments into the new screen space using the updated viewproj and the old viewproj.
 * To avoid disocclusion artifacts, use last frames camera position for the current camera position. If you're ok with disocclusion, you can use the updated camera position as well. 
 * Vert shader: either using a dense grid mesh or a rect of points for every pixel, sample the old depth buffer and turn the sample into an ndc value.Transform to world space using the viewproj inverse from last frame then transform to current ndc space using the current viewproj. 
