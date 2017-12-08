@@ -65,6 +65,20 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 ** Resolution scale 0.5<br />
 ![](SecondaryVR/img/adaptiveQuality0.5.png)
 
+# Asynchonous Time Warp (ATW)
+* In another thread, prepare last frame's final render target, depth buffer, and view matrix. If we are going to miss vsync with our current render task, prempt the gpu and warp old fragments into the new screen space using the updated viewproj and the old viewproj.
+* To avoid disocclusion artifacts, use last frames camera position for the current camera position. If you're ok with disocclusion, you can use the updated camera position as well. 
+* Vert shader: either using a dense grid mesh or a rect of points for every pixel, sample the old depth buffer and turn the sample into an ndc value.Transform to world space using the viewproj inverse from last frame then transform to current ndc space using the current viewproj. 
+* Frag Shader: use the fragments original uv value to sample from the previous render target to pull that colored fragment over to its updated position in the current screen space. 
+
+** Time Warp Simulation: <br />
+* Starts out normally with vr and radial density mask
+* Then enters time warp simulation mode where rendering is frozen. We take note of tripple buffer ID of last frame rendered as well as the camera state. 
+* Perform warping the previous fragments into the new screen space as described above
+![](SecondaryVR/img/timewarp.gif)
+
+
+
 # Vulkan Performance Things
 * To limit context switches (changing shaders, mesh info, etc):
 * Sift shader calls into secondary command buffers and combine into one primary so there's only one shader switch for each shader that is needed in the render pass
