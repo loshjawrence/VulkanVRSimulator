@@ -13,6 +13,8 @@ Mesh::Mesh(const VulkanContextInfo& contextInfo, const MESHTYPE meshtype, uint32
 	if (meshtype == MESHTYPE::NDCTRIANGLE)					createNDCTriangle(contextInfo);
 	else if (meshtype == MESHTYPE::NDCBARRELMESH)			createNDCBarrelMesh(contextInfo, camIndex);
 	else if (meshtype == MESHTYPE::NDCBARRELMESH_PRECALC)	createNDCBarrelMeshPreCalc(contextInfo,camIndex);
+	else if (meshtype == MESHTYPE::NDCPIXELPOINTS)			createNDCPixelPoints(contextInfo);
+
 }
 
 Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices, 
@@ -95,17 +97,33 @@ void Mesh::createNDCTriangle(const VulkanContextInfo& contextInfo) {
 	VulkanBuffer::createIndexBuffer(contextInfo, mIndices, indexBuffer, indexBufferMemory);
 }
 
+void Mesh::createNDCPixelPoints(const VulkanContextInfo& contextInfo) {
+	//top left (vulk top left of screen is -1,-1 and uv 0, 0) also the front face is set to ccw
+
+	const float strideX = 2.f / contextInfo.camera.renderTargetExtent.width;
+	const float strideY = 2.f / contextInfo.camera.renderTargetExtent.height;
+	//vertices
+	mVertices.reserve(contextInfo.camera.renderTargetExtent.width * 
+						contextInfo.camera.renderTargetExtent.height);
+	const glm::vec3 color;
+	const glm::vec3 nor(1.0f);
+	for (float y = -1.f+strideY*0.5f; y < 1.f; y += strideY) {
+		for (float x = -1.f+strideX*0.5f; x < 1.f; x += strideX) {
+			Vertex v;
+			v.pos = glm::vec3(x, y, 0.5f);
+			v.color = glm::abs(v.pos);
+			v.uv = glm::vec2((x+1.f)*0.5f, (y+1.f)*0.5f);
+			//std::cout << "\n\nPos:( " << v.pos.x << ", " << v.pos.y << ")";
+			//std::cout << "\nUV:( " << v.uv.x << ", " << v.uv.y << ")";
+			mVertices.push_back(v);
+		}
+	}
+
+	VulkanBuffer::createVertexBuffer(contextInfo, mVertices, vertexBuffer, vertexBufferMemory);
+}
+
 void Mesh::genGridMesh(const VulkanContextInfo& contextInfo, const uint32_t camIndex, const uint32_t shift) {
 	//top left (vulk top left of screen is -1,-1 and uv 0, 0) also the front face is set to ccw
-    float x = (camIndex == 0) ? 0.f : 0.5f;
-    float y = 0.0;
-    float w = 0.5;
-    float h = 1.0;
-
-	//ndc offset
-    //float XCenterOffset = (camIndex == 1) ? -Distortion_XCenterOffset : Distortion_XCenterOffset;
-	//const float shiftVal = (XCenterOffset*(uint32_t)contextInfo.camera.vrmode*shift);
-	//const float xStart = -1.f + shiftVal;
 
 	const float stride = 2.f / quadsPerDim;
 	//vertices

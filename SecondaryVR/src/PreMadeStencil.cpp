@@ -9,7 +9,10 @@
 
 PreMadeStencil::PreMadeStencil(const VulkanContextInfo& contextInfo, const uint32_t qualityIndex, const StencilType type)
 	: type(type), qualityIndex(qualityIndex), qualityScale(contextInfo.camera.vrScalings[qualityIndex]) 
-	, writeStencil(true)
+
+
+	//set to false to just read the mask from disk
+	, writeStencil(false)
 {
 	if (!writeStencil) { genFileName(); return; }
 	if (StencilType::RadialDensityMask == type) {

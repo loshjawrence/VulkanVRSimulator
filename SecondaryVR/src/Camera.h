@@ -7,6 +7,7 @@
 #include "GlobalSettings.h"
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <array>
 
 enum class MovementDirection {
 	NONE = -1, FORWARD = 0, BACKWARD = 1, LEFT = 2, RIGHT = 3, UP = 4, DOWN = 5,
@@ -15,7 +16,7 @@ enum class MovementDirection {
 class Camera {
 public:
 	glm::vec3 worldUp = glm::vec3(0.f, 1.f, 0.f);
-	float ipd = 0.009f;//assets need to be made with scale in mind so this is just tuned to look reasonable
+	float ipd = 0.09f;//assets need to be made with scale in mind so this is just tuned to look reasonable
 	float movementspeed = 10.f;
 	float looksensitivity = 0.7f;
 	float yaw = -90.f;//about y, looking down local -z
@@ -27,13 +28,23 @@ public:
 	float targetFrameTime_ms = 2.f;
 	//float MAX_QUALITY = 0.599999964f;//work around for odd scaling issue in holefill shader due to odd dims for x and y at certain intermediate scalings
 	float MAX_QUALITY = 1.4;//work around for odd scaling issue in holefill shader due to odd dims for x and y at certain intermediate scalings
-
-	//float virtualRenderTargetScaling = MAX_QUALITY;
-
 	int qualityIndex = 0;
 	int numQualitySettings = 8;
 	float qualityStepping = 0.1f;
 	std::vector<float> vrScalings;
+
+	bool useStencil = true;
+
+	//Time Warp State
+	bool timewarpCleanUp = false;
+	bool timewarp = false;
+	bool timewarpInitFlag = false;
+	uint32_t timewarpTrippleBufferID;
+	glm::vec3 rightCamPosTimeWarp;
+	std::array<glm::mat4, 2> timeWarpInvVP;
+
+
+
 
 	bool vrmode = false;
 	//DK1 full
@@ -69,6 +80,10 @@ public:
 
 	void updateQualitySettings(const bool increase);
 	void updateVrModeAndCameras();
+
+	//time warp
+	void updateTimeWarpState();
+	void timeWarpFinishInit(const uint32_t imageIndex);
 
 	void updateDimensions(const VkExtent2D& swapChainExtent);
 	void updatePerspectiveProjection();

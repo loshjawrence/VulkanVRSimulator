@@ -28,7 +28,7 @@ const uint32_t HAS_HEIGHT	= 1 << 4;
 
 
 //if you need to add a new one just add it here and it will make a new pipeline for it
-const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_ForwardPipeline =
+const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_ForwardPipelines =
 {
 	//No Tex shaders
 	{{"src/shaders/forward.vert.spv",
@@ -74,36 +74,76 @@ const std::vector< std::pair<std::vector<std::string>, uint32_t> > allShaders_Fo
 //for cases that aren't one after the other
 
 //name of shaders and number of input sampler images
-const bool useStencil = true;
-
-//////////////////////////////////////SHADER PATHS,  num image inputs(should be vector of source stages)
-const std::vector< std::tuple<std::vector<std::string>, uint32_t> > allShaders_PostProcessPipeline =
+//TODO: PostProcessPipeline should have a struct that has all needed config parameters to set up the instance
+//SHADER PATHS,  num image inputs(should be vector of source stages), typeFlags (0 is normal ,1 is timewarp)
+const std::vector< std::tuple<std::vector<std::string>, uint32_t, uint32_t> > allShaders_PostProcessPipelines =
 {
-	////passthrough
+	////PASSTHROUGH
 	//{{"src/shaders/ppPassthrough.vert.spv",
 	//"src/shaders/ppPassthrough.frag.spv"},
-	//1}, //1 is num input sampler images to this pp stage
+	//1, 0}, //1 is num input sampler images to this pp stage
 
 	////STENCIL HOLE FILL
 	{{"src/shaders/ppPassthrough.vert.spv",
 	"src/shaders/ppStencilHoleFill.frag.spv"},
-	1}, 
+	1, 0}, 
 
-	//////Barrel/Aberration all in FRAG 
+	//////BARREL/ABERRATION ALL IN FRAG 
 	{{"src/shaders/ppPassthrough.vert.spv",
 	"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
-	1},
+	1, 0},
 
-	//Barrel/Aberration PRECALC MESH
-//	{{"src/shaders/ppBarrelAbMeshPreCalc.vert.spv",
-//	"src/shaders/ppBarrelAbMeshPreCalc.frag.spv"},
-//	1},
+	//BARREL/ABERRATION PRECALC MESH
+	//{{"src/shaders/ppBarrelAbMeshPreCalc.vert.spv",
+	//"src/shaders/ppBarrelAbMeshPreCalc.frag.spv"},
+	//1, 0},
 
-	//Barrel/Aberration SHADER MESH (no precalc, done in shaders)
+	//BARREL/ABERRATION SHADER MESH (NO PRECALC, DONE IN SHADERS)
 	//{{"src/shaders/ppBarrelAbMesh2.vert.spv",
 	//"src/shaders/ppBarrelAbMesh.frag.spv"},
-	//1},
+	//1, 0},
 };
+
+//SHADER PATHS,  num image inputs(should be vector of source stages), typeFlags (0 is normal ,1 is timewarp)
+const std::vector< std::tuple<std::vector<std::string>, uint32_t, uint32_t> > allShaders_TimeWarpPipelines =
+{
+	////passthrough
+	{{"src/shaders/ppTimeWarp.vert.spv",
+	"src/shaders/ppTimeWarp.frag.spv"},
+	2, 1}, //1 is num input sampler images to this pp stage
+
+	////TimeWarp
+	//{{"src/shaders/ppTimeWarp.vert.spv",
+	//"src/shaders/ppTimeWarp.frag.spv"},
+	//2, 1}, //1 is num input sampler images to this pp stage
+
+	////Barrel/Aberration all in FRAG 
+	{{"src/shaders/ppPassthrough.vert.spv",
+	"src/shaders/ppBarrelAbFragCommonUse.frag.spv"},
+	1, 0},
+	//{{"src/shaders/ppPassthrough.vert.spv",
+	//"src/shaders/ppPassthrough.frag.spv"},
+	//1, 0},
+
+	//combined?
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 //std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene;
 //const std::vector< std::tuple<std::string, int, glm::mat4> > defaultScene =
 //{

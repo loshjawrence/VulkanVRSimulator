@@ -17,8 +17,8 @@ PostProcessPipeline::PostProcessPipeline() {
 
 PostProcessPipeline::PostProcessPipeline(const std::vector<std::string>& shaderpaths,
 	const VulkanRenderPass& renderPass, const VulkanContextInfo& contextInfo, 
-	const VkDescriptorSetLayout* setLayouts, const bool isPresent) 
-	: shaderpaths(shaderpaths), isPresent(isPresent)
+	const VkDescriptorSetLayout* setLayouts, const bool isPresent, const PipelineType type) 
+	: shaderpaths(shaderpaths), isPresent(isPresent), pipelinetype(type)
 {
 
 	//TODO: determine renderPass type here based on pipeline type? or will it all be one renderpass in the end?
@@ -152,7 +152,7 @@ void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.topology = pipelinetype == PipelineType::TIMEWARP ? VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 	VkViewport viewport = {};
@@ -178,9 +178,9 @@ void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
 	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rasterizer.depthClampEnable = VK_FALSE;
 	rasterizer.rasterizerDiscardEnable = VK_FALSE;
-	rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+	rasterizer.polygonMode = pipelinetype == PipelineType::TIMEWARP ? VK_POLYGON_MODE_FILL : VK_POLYGON_MODE_FILL;
 	//rasterizer.polygonMode = VK_POLYGON_MODE_LINE;
-	rasterizer.lineWidth = 1.0f;
+	rasterizer.lineWidth = pipelinetype == PipelineType::TIMEWARP ? 1.f : 1.0f;
 	//rasterizer.cullMode = VK_CULL_MODE_NONE;
 	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
 	rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
@@ -220,8 +220,13 @@ void PostProcessPipeline::createPipeline(const VulkanRenderPass& renderPass,
 	std::vector<VkPushConstantRange> pushContantRanges;
 	VkPushConstantRange push1 = {};
 	push1.offset = 0;
-	push1.size = sizeof(PostProcessPushConstant);
-	push1.stageFlags = PostProcessPushConstant::stages;
+	if (pipelinetype == PipelineType::TIMEWARP) {
+		push1.size = sizeof(TimeWarpPushConstant);
+		push1.stageFlags = TimeWarpPushConstant::stages;
+	} else {
+		push1.size = sizeof(PostProcessPushConstant);
+		push1.stageFlags = PostProcessPushConstant::stages;
+	}
 	pushContantRanges.push_back(push1);
 
 
@@ -497,7 +502,7 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 		vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
 
 		//vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(mesh.mIndices.size()), 1, 0, 0, 0);
-		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(meshes[0].mIndices.size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(meshes[camIndex].mIndices.size()), 1, 0, 0, 0);
 
 		if (contextInfo.camera.vrmode) {
 			//bind other precalc mesh(can't just use the same one since not the same(asymmetrical/mirrored)
@@ -529,6 +534,107 @@ void PostProcessPipeline::createStaticCommandBuffers(const VulkanContextInfo& co
 	}
 }
 
+void PostProcessPipeline::createStaticCommandBuffersTimeWarp(const VulkanContextInfo& contextInfo, 
+	const VulkanRenderPass& renderPass, const std::vector<Mesh>& meshes) 
+{
+	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		VkCommandBufferAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		allocInfo.commandPool = commandPools[0];
+		allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		//allocInfo.level = VK_COMMAND_BUFFER_LEVEL_SECONDARY;
+		allocInfo.commandBufferCount = 1;
+
+		if (vkAllocateCommandBuffers(contextInfo.device, &allocInfo, &commandBuffers[i]) != VK_SUCCESS)
+		{
+			throw std::runtime_error("failed to allocate command buffers!");
+		}
+
+		VkCommandBufferBeginInfo beginInfo = {};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+		//beginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT | VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+		beginInfo.pInheritanceInfo = nullptr; // Optional
+
+
+		vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
+
+		std::array<VkClearValue, 1> clearValues = {};
+		clearValues[0].color = { 0.0f, 0.0f, 0.0f, 0.0f };
+		//clearValues[1].depthStencil = { 1.0f, 0 };
+
+		VkRenderPassBeginInfo renderPassInfo = {};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = isPresent ? renderPass.renderPassPostProcessPresent : renderPass.renderPassPostProcess;
+		renderPassInfo.framebuffer = framebuffers[i];
+		renderPassInfo.renderArea.offset = { 0, 0 };
+		renderPassInfo.renderArea.extent = isPresent ? contextInfo.swapChainExtent : contextInfo.camera.renderTargetExtent;
+
+		renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassInfo.pClearValues = clearValues.data();
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+
+
+		vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &inputDescriptors[i].descriptorSet, 0, nullptr);
+
+		VkBuffer vertexBuffers[] = { meshes[0].vertexBuffer };
+		VkBuffer indexBuffer = meshes[0].indexBuffer;
+		VkDeviceSize offsets[] = { 0 };
+
+		vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+		vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+		
+		uint32_t camIndex = 0;
+		TimeWarpPushConstant pushconstant = { contextInfo.camera.timeWarpInvVP[camIndex],
+													camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode), 
+													contextInfo.camera.renderTargetExtent.width, 
+													contextInfo.camera.renderTargetExtent.height,
+													};
+		vkCmdPushConstants(commandBuffers[i], pipelineLayout, TimeWarpPushConstant::stages, 0, sizeof(TimeWarpPushConstant), (const void*)&pushconstant);
+
+		VkViewport viewport = {}; VkRect2D scissor = {};
+		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, contextInfo.camera.vrmode);
+		vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
+		vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
+
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(meshes[0].mIndices.size()), 1, 0, 0, 0);
+		//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(meshes[0].mVertices.size()), 1, 0, 0);
+
+		//only ran in vr mode
+		camIndex = 1;
+		//VkBuffer vertexBuffers[] = { meshes[camIndex].vertexBuffer };
+		//VkBuffer indexBuffer = meshes[camIndex].indexBuffer;
+		//VkDeviceSize offsets[] = { 0 };
+
+		//vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, vertexBuffers, offsets);
+		//vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+		pushconstant = { contextInfo.camera.timeWarpInvVP[camIndex],
+						camIndex << 1 | static_cast<uint32_t>(contextInfo.camera.vrmode),
+						contextInfo.camera.renderTargetExtent.width,
+						contextInfo.camera.renderTargetExtent.height };
+		vkCmdPushConstants(commandBuffers[i], pipelineLayout, TimeWarpPushConstant::stages, 0, sizeof(TimeWarpPushConstant), (const void*)&pushconstant);
+		getViewportAndScissor(viewport, scissor, contextInfo, camIndex, contextInfo.camera.vrmode);
+		vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
+		vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
+
+		vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(meshes[0].mIndices.size()), 1, 0, 0, 0);
+		//vkCmdDraw(commandBuffers[i], static_cast<uint32_t>(meshes[0].mVertices.size()), 1, 0, 0);
+
+		vkCmdEndRenderPass(commandBuffers[i]);
+
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS) {
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to record command buffer!";
+			throw std::runtime_error(ss.str());
+		}
+	}
+}
+
 void PostProcessPipeline::createInputDescriptors(const VulkanContextInfo& contextInfo, 
 	const std::vector<VulkanImage>& vulkanImages)
 {
@@ -541,6 +647,22 @@ void PostProcessPipeline::createInputDescriptors(const VulkanContextInfo& contex
 		//may want to extent this to include cases where a post process has multiple render targets and therefore VulkanImages
 		const std::vector<VulkanImage>& vulkanImagesAtSwapIndex = { vulkanImages[i] };
 		inputDescriptors[i].createDescriptorSetPostProcess(contextInfo, vulkanImagesAtSwapIndex);
+	}
+}
+
+void PostProcessPipeline::createInputDescriptorsTimeWarp(const VulkanContextInfo& contextInfo, 
+	const std::vector<VulkanImage>& vulkanImages, const VulkanImage& depthImage, const VkBuffer& uniformBuffer,
+	const int sizeofUBOstruct)
+{
+	inputDescriptors.resize(contextInfo.swapChainImages.size());
+	for (int i = 0; i < contextInfo.swapChainImages.size(); ++i) {
+		inputDescriptors[i].numImageSamplers = 2;
+		inputDescriptors[i].createDescriptorSetLayoutPostProcessTimeWarp(contextInfo);
+		inputDescriptors[i].createDescriptorPoolPostProcessTimeWarp(contextInfo);
+
+		//may want to extent this to include cases where a post process has multiple render targets and therefore VulkanImages
+		inputDescriptors[i].createDescriptorSetPostProcessTimeWarp(contextInfo, vulkanImages, 
+			depthImage, uniformBuffer, sizeofUBOstruct);
 	}
 }
 

@@ -91,10 +91,11 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)SecondaryVR\dependencies\tinyobjloader-master;$(SolutionDir)SecondaryVR\dependencies\stb-master;$(SolutionDir)SecondaryVR\dependencies\glm;$(SolutionDir)SecondaryVR\dependencies\GLFW\include;$(SolutionDir)SecondaryVR\dependencies\assimp\include;$(SolutionDir)SecondaryVR\src;C:\VulkanSDK\1.0.65.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)SecondaryVR\dependencies\tinyobjloader-master;$(SolutionDir)SecondaryVR\dependencies\stb-master;$(SolutionDir)SecondaryVR\dependencies\glm;$(SolutionDir)SecondaryVR\dependencies\GLFWx64\include;$(SolutionDir)SecondaryVR\dependencies\assimpx64\include;$(SolutionDir)SecondaryVR\src;C:\VulkanSDK\1.0.65.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalLibraryDirectories>$(SolutionDir)SecondaryVR\dependencies\GLFW\lib-vc2015;$(SolutionDir)SecondaryVR\dependencies\assimp\lib\x86;C:\VulkanSDK\1.0.65.0\Lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)SecondaryVR\dependencies\GLFWx64\lib-vc2015;$(SolutionDir)SecondaryVR\dependencies\assimpx64\lib\x64;C:\VulkanSDK\1.0.65.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;assimp-vc140-mt.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -126,12 +127,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>$(SolutionDir)SecondaryVR\dependencies\tinyobjloader-master;$(SolutionDir)SecondaryVR\dependencies\stb-master;$(SolutionDir)SecondaryVR\dependencies\glm;$(SolutionDir)SecondaryVR\dependencies\GLFW\include;$(SolutionDir)SecondaryVR\dependencies\assimp\include;$(SolutionDir)SecondaryVR\src;C:\VulkanSDK\1.0.65.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)SecondaryVR\dependencies\tinyobjloader-master;$(SolutionDir)SecondaryVR\dependencies\stb-master;$(SolutionDir)SecondaryVR\dependencies\glm;$(SolutionDir)SecondaryVR\dependencies\GLFWx64\include;$(SolutionDir)SecondaryVR\dependencies\assimpx64\include;$(SolutionDir)SecondaryVR\src;C:\VulkanSDK\1.0.65.0\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_MBCS;%(PreprocessorDefinitions);_CRT_SECURE_NO_WARNINGS</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>$(SolutionDir)SecondaryVR\dependencies\GLFW\lib-vc2015;$(SolutionDir)SecondaryVR\dependencies\assimp\lib\x86;C:\VulkanSDK\1.0.65.0\Lib32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(SolutionDir)SecondaryVR\dependencies\GLFWx64\lib-vc2015;$(SolutionDir)SecondaryVR\dependencies\assimpx64\lib\x64;C:\VulkanSDK\1.0.65.0\Lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>vulkan-1.lib;glfw3.lib;assimp-vc140-mt.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>

@@ -158,7 +158,8 @@ void VulkanImage::createImage(const VulkanContextInfo& contextInfo) {
 		if (filepath != std::string("")) {
 			usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 		} else {
-			usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+			usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+				(contextInfo.camera.timewarp ? VK_IMAGE_USAGE_SAMPLED_BIT : 0x0);
 		}
 		properties = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
 	} else if (imagetype == IMAGETYPE::TEXTURE) {
@@ -317,8 +318,8 @@ void VulkanImage::createImageSampler(const VulkanContextInfo& contextInfo) {
 	samplerInfo.compareEnable = VK_FALSE;
 	samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 	if (imagetype == IMAGETYPE::COLOR_ATTACHMENT) {
-		samplerInfo.magFilter - VK_FILTER_NEAREST;
-		samplerInfo.minFilter - VK_FILTER_NEAREST;
+		samplerInfo.magFilter = VK_FILTER_NEAREST;
+		samplerInfo.minFilter = VK_FILTER_NEAREST;
 		samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 		samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
 		samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;

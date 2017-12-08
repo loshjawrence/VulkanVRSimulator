@@ -15,7 +15,9 @@ get mesh based barrel/chromatic aberration PP working
 - if model has no use for some vertex attributes dont send to gpu (dont add them to begin with?)
 - add a descriptor type to reduce number of functions in VulkanDescriptor?
 - associate command pools with the correct abstraction
-- try combining the descriptor layouts into descriptor sets? is there benefit to this?
+- try combining the descriptor layouts into descriptor sets? is there benefit to this? does it simplify the VulkanDescriptor abstraction? 
+    Does it make uber shaders easier, i.e. have one pipeline bound to one uber shader but you bind the textures appropriate for that mesh
+    to specific descritpor sets (the descriptor layout has multiple sets that can be bound) and use push constant flag to tell the uber shader what this material is.
 - fix camera so its controlling middel of head and not left eye
 - lookup how to do single draw call vr
 

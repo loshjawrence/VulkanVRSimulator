@@ -114,7 +114,7 @@ bool VulkanContextInfo::isDeviceSuitable(const VkPhysicalDevice& device) {
 	VkPhysicalDeviceFeatures supportedFeatures;
 	vkGetPhysicalDeviceFeatures(device, &supportedFeatures);
 
-	return hasGraphicsAndPresentQueueFamilies && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+	return hasGraphicsAndPresentQueueFamilies && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy && supportedFeatures.fillModeNonSolid;
 }
 
 void VulkanContextInfo::determineQueueFamilies(const VkPhysicalDevice& device) {
@@ -239,7 +239,7 @@ void VulkanContextInfo::initStencils() {
 
 void VulkanContextInfo::createDepthImage() {
 	determineDepthFormat();
-	if (!camera.vrmode) {
+	if (!camera.vrmode || (camera.vrmode && camera.timewarp)) {
 		depthImage = VulkanImage(IMAGETYPE::DEPTH, camera.renderTargetExtent, depthFormat, *this, std::string(""));
 	} else {
 		const int i = camera.qualityIndex;
@@ -248,12 +248,13 @@ void VulkanContextInfo::createDepthImage() {
 }
 
 void VulkanContextInfo::determineDepthFormat() {
+	const std::vector<VkFormat> stencilformat = { VK_FORMAT_D32_SFLOAT_S8_UINT };
+	const std::vector<VkFormat> defaultformats = { VK_FORMAT_D32_SFLOAT,VK_FORMAT_D32_SFLOAT_S8_UINT,VK_FORMAT_D24_UNORM_S8_UINT };
 	depthFormat = findSupportedFormat(
-	//{ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
-	{ VK_FORMAT_D32_SFLOAT_S8_UINT },
+	camera.useStencil ? stencilformat : defaultformats,
 		VK_IMAGE_TILING_OPTIMAL,
 		//VK_IMAGE_TILING_LINEAR,
-		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+		VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT 
 	);
 }
 

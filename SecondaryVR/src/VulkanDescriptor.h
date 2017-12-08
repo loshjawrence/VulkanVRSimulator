@@ -40,8 +40,8 @@ public:
 
 	static bool layoutsInitialized;
 	static std::vector<VkDescriptorSetLayout> layoutTypes;
-	//NEW
 	static std::vector<VkDescriptorSetLayout> postProcessLayoutTypes;
+	static std::vector<VkDescriptorSetLayout> timeWarpLayoutTypes;
 
 public:
 	VulkanDescriptor();
@@ -55,9 +55,16 @@ public:
 
 	//NEW
 	void createDescriptorSetLayoutPostProcess(const VulkanContextInfo& contextInfo);
+	void createDescriptorSetLayoutPostProcessTimeWarp(const VulkanContextInfo& contextInfo);
 	void createDescriptorPoolPostProcess(const VulkanContextInfo& contextInfo);
+	void createDescriptorPoolPostProcessTimeWarp(const VulkanContextInfo& contextInfo);
 	void createDescriptorSetPostProcess(const VulkanContextInfo& contextInfo,
 		const std::vector<VulkanImage>& vulkanImages);
+	//void createDescriptorSetPostProcessTimeWarp(const VulkanContextInfo& contextInfo,
+	//	const std::vector<VulkanImage>& vulkanImages, const VulkanImage& depthImage);
+	void createDescriptorSetPostProcessTimeWarp(const VulkanContextInfo& contextInfo,
+		const std::vector<VulkanImage>& vulkanImages, const VulkanImage& depthImage, const VkBuffer& uniformBuffer,
+		const int sizeofUBOstruct);
 
 	void determineNumImageSamplersAndTextureMapFlags(const Mesh* const mesh);
 

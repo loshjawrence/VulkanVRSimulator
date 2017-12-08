@@ -17,7 +17,7 @@ struct Texture {
 };
 
 enum class MESHTYPE {
-	NDCTRIANGLE = 0, NDCBARRELMESH, NDCBARRELMESH_PRECALC
+	NDCTRIANGLE = 0, NDCBARRELMESH, NDCBARRELMESH_PRECALC, NDCPIXELPOINTS,
 };
 
 class Mesh {
@@ -55,6 +55,7 @@ public:
 	void createNDCTriangle(const VulkanContextInfo& contextInfo);
 	void createNDCBarrelMesh(const VulkanContextInfo& contextInfo, const uint32_t camIndex);
 	void createNDCBarrelMeshPreCalc(const VulkanContextInfo& contextInfo, const uint32_t camIndex);
+	void createNDCPixelPoints(const VulkanContextInfo& contextInfo);
 
 	static void getSourceUV(const uint32_t camIndex, const glm::vec2& oTexCoord,
 		glm::vec2& out_tcRed, glm::vec2& out_tcGreen, glm::vec2& out_tcBlue);

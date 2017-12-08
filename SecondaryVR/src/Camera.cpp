@@ -1,11 +1,12 @@
 #include "Camera.h"
+#include <iostream>
 
 Camera::Camera() {
 	vrScalings.resize(numQualitySettings);
 	for (int i = 0; i < numQualitySettings; ++i) {
 		vrScalings[i] = MAX_QUALITY - i*qualityStepping;
 	}
-
+	updatePerspectiveProjection();
 	updateComponentVectorsAndViews(false);
 }
 
@@ -26,29 +27,38 @@ void Camera::updateComponentVectorsAndViews(bool changingModes) {
 	camUp = glm::normalize(glm::cross(camRight, camFront));
 	view[0] = glm::lookAt(camPos, camPos + camFront, camUp);
 
-	if (vrmode) {
+	if (vrmode && !timewarp) {
 		//right cam is left cam but local shift right by ipd
 		const glm::vec3 rightCamPos = camPos + camRight*ipd;
 		view[1] = glm::lookAt(rightCamPos, rightCamPos + camFront, camUp);
-	} 
+	} else if (vrmode && timewarp) {
+		//when in time warp, both camera positions are locked and only rotation is updated
+		//view[1] = glm::lookAt(rightCamPosTimeWarp, rightCamPosTimeWarp + camFront, camUp);
+		const glm::vec3 rightCamPos = camPos + camRight*ipd;
+		view[1] = glm::lookAt(rightCamPos, rightCamPos + camFront, camUp);
+		//std::cout << "\nleft pos: " << camPos.x << " " << camPos.y << " " << camPos.z;
+		//std::cout << "\nright pos: " << rightCamPosTimeWarp.x << " " << rightCamPosTimeWarp.y << " " << rightCamPosTimeWarp.z;
+	}
 }
 
 
 void Camera::processKeyboardAndUpdateView(MovementDirection direction, float deltaTime) {
 	//update camPos
-	float velocity = movementspeed * deltaTime;
-	if (direction == MovementDirection::FORWARD)
-		camPos += camFront * velocity;
-	if (direction == MovementDirection::BACKWARD)
-		camPos -= camFront * velocity;
-	if (direction == MovementDirection::LEFT)
-		camPos -= camRight * velocity;
-	if (direction == MovementDirection::RIGHT)
-		camPos += camRight * velocity;
-	if (direction == MovementDirection::UP)
-		camPos += camUp * velocity;
-	if (direction == MovementDirection::DOWN)
-		camPos -= camUp * velocity;
+	if (!timewarp) { //disable position updates
+		float velocity = movementspeed * deltaTime;
+		if (direction == MovementDirection::FORWARD)
+			camPos += camFront * velocity;
+		if (direction == MovementDirection::BACKWARD)
+			camPos -= camFront * velocity;
+		if (direction == MovementDirection::LEFT)
+			camPos -= camRight * velocity;
+		if (direction == MovementDirection::RIGHT)
+			camPos += camRight * velocity;
+		if (direction == MovementDirection::UP)
+			camPos += camUp * velocity;
+		if (direction == MovementDirection::DOWN)
+			camPos -= camUp * velocity;
+	}
 
 	updateComponentVectorsAndViews(false);
 }
@@ -102,9 +112,32 @@ void Camera::updateDimensions(const VkExtent2D& swapChainExtent) {
 
 void Camera::updatePerspectiveProjection() {
 	proj = glm::perspective(glm::radians(fov), float(width) / height, near, far);
+	proj[1][1] *= -1.f;
 }
 
 void Camera::updateVrModeAndCameras() {
 	vrmode = !vrmode;
+	if (!vrmode) { timewarp = false; }//force off in for non vr mode
 	updateComponentVectorsAndViews(true);
+}
+
+//when in time warped state we only want to update camera rotation to avoid disocculusion(for now)
+void Camera::updateTimeWarpState() {
+	if (!timewarp) { 
+		useStencil = false;
+		timewarp = true;
+		timewarpInitFlag = true; 
+		rightCamPosTimeWarp = camPos + camRight*ipd;
+	} else { 
+		useStencil = true;
+		timewarp = false;
+		timewarpInitFlag = false;
+	}
+}
+
+void Camera::timeWarpFinishInit(const uint32_t imageIndex) {
+	timewarpTrippleBufferID = imageIndex;
+	timewarpInitFlag = false;
+	timeWarpInvVP[0] = glm::inverse(proj * view[0]);
+	timeWarpInvVP[1] = glm::inverse(proj * view[1]);
 }

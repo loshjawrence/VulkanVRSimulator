@@ -10,12 +10,7 @@ C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o forwardAll.frag.spv 		for
 C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppPassthrough.vert.spv 		ppPassthrough.vert
 C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppPassthrough.frag.spv 		ppPassthrough.frag
 C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppStencilHoleFill.frag.spv 	ppStencilHoleFill.frag
-C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppStencilHoleFillPrefetch.frag.spv 	ppStencilHoleFillPrefetch.frag
-C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppBarrelAbFrag.frag.spv 		ppBarrelAbFrag.frag
 C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppBarrelAbFragCommonUse.frag.spv ppBarrelAbFragCommonUse.frag
-C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppBarrelAbMesh.vert.spv 		ppBarrelAbMesh.vert
-C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppBarrelAbMesh2.vert.spv 	ppBarrelAbMesh2.vert
-C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppBarrelAbMesh.frag.spv 		ppBarrelAbMesh.frag
-C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppBarrelAbMeshPreCalc.vert.spv 	ppBarrelAbMeshPreCalc.vert
-C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppBarrelAbMeshPreCalc.frag.spv 	ppBarrelAbMeshPreCalc.frag
+C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppTimeWarp.vert.spv 		ppTimeWarp.vert
+C:/VulkanSDK/1.0.61.1/Bin32/glslangValidator.exe -V -o ppTimeWarp.frag.spv 		ppTimeWarp.frag
 pause

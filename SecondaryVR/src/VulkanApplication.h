@@ -87,12 +87,14 @@ private:
 	std::vector<VulkanImage> forwardPipelinesVulkanImages;
 	VulkanRenderPass allRenderPasses;
 	std::vector<PostProcessPipeline> postProcessPipelines;
+	std::vector<PostProcessPipeline> timeWarpPipelines;
 
 
 	//post process meshes
 	Mesh ndcTriangle;
-	Mesh ndcBarrelMesh[2];
-	Mesh ndcBarrelMesh_PreCalc[2];//0 left, 1 right
+	Mesh ndcBarrelMesh[2];//0 left, 1 right
+	Mesh ndcBarrelMesh_PreCalc[2];
+	Mesh ndcPixelPoints;//needed for timewarp
 
 	//used for fps tracker
 	double oldtime = 0.f;
@@ -146,12 +148,18 @@ private:
 
 	void allocateGlobalCommandBuffers();
 	void addGraphicsCommandPool(const int num);
+
+	//rendering
+	void renderNormally(const uint32_t imageIndex);
+	void renderTimeWarp(const uint32_t imageIndex);
+	void createTimeWarpDescriptorAndCommands();
 	void beginRecordingPrimary(const uint32_t imageIndex);
 	void beginRecordingPrimary(VkCommandBufferInheritanceInfo& inheritanceInfo, const uint32_t imageIndex);
 	void endRecordingPrimary(const uint32_t imageIndex);
+	void createPipelines();
+	void createTimeWarpPipelines();
 
 	void createSemaphores();
-	void createPipelines();
 	void destroyPipelines();
 	void destroyOffScreenRenderTargets();
 	void freeGlobalCommandBuffers();

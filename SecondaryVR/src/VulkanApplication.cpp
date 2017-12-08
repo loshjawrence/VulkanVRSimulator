@@ -52,8 +52,8 @@ void VulkanApplication::loadModels() {
 		const float x = static_cast<float>(rng.nextUInt(1));
 		const float y = static_cast<float>(rng.nextUInt(1));
 		const float z = static_cast<float>(rng.nextUInt(1));
-		defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
-			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
+		//defaultScene[i] = { std::string("res/objects/rock/rock.obj"), 1,
+		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i+1] = { std::string("res/objects/cube.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(y, z, x)) };
 		//defaultScene[i] = { std::string("res/objects/buddha.obj"), 1,//Largest that works
@@ -73,8 +73,8 @@ void VulkanApplication::loadModels() {
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+1, y, z)) };
 		//defaultScene[i+3] = { std::string("res/objects/nanosuit/nanosuit.obj"), 1,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.1f)),glm::vec3(x+2, y, z)) };
-		//defaultScene[i] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
-		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
+		defaultScene[i] = { std::string("res/objects/cryteksponza/sponza.obj"), 0,
+			glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(0.005f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/dabrovicsponza/sponza.obj"), 0,
 		//	glm::translate(glm::scale(glm::mat4(1.f), glm::vec3(1.0f)),glm::vec3(x, y, z)) };
 		//defaultScene[i] = { std::string("res/objects/sibenikcathedral/sibenik.obj"), 0,
@@ -109,9 +109,10 @@ void VulkanApplication::initVulkan() {
 
 	createPPMeshes();
 
+	VulkanBuffer::createUniformBuffer(contextInfo, sizeof(UniformBufferObject), uniformBuffer, uniformBufferMemory);
+
 	//setup all pipelines
 	createPipelines();
-	VulkanBuffer::createUniformBuffer(contextInfo, sizeof(UniformBufferObject), uniformBuffer, uniformBufferMemory);
 
 	loadModels();
 
@@ -132,6 +133,22 @@ void VulkanApplication::drawFrame() {
 		throw std::runtime_error(ss.str());
 	}
 
+	if (!contextInfo.camera.timewarp) {
+		renderNormally(imageIndex);
+	} else if (contextInfo.camera.timewarp) {
+		if (contextInfo.camera.timewarpInitFlag) {
+			//render normally(stencil is off so we get full z-buffer image)
+			renderNormally(imageIndex);
+			contextInfo.camera.timeWarpFinishInit(imageIndex);
+			createTimeWarpDescriptorAndCommands();
+		} else {
+			//use the forward rendered image at the saved imageIndex as our source image and warp it into updated camera rotations
+			renderTimeWarp(imageIndex);
+		}
+	}
+}
+
+void VulkanApplication::renderNormally(const uint32_t imageIndex) {
 	std::vector<VkSemaphore> forwardWaitSemaphores = { imageAvailableSemaphore };
 	std::vector<VkPipelineStageFlags> forwardWaitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 
@@ -245,7 +262,66 @@ void VulkanApplication::drawFrame() {
 	presentInfo.pImageIndices = &imageIndex;
 
 	vkQueueWaitIdle(contextInfo.presentQueue);
-	result = vkQueuePresentKHR(contextInfo.presentQueue, &presentInfo);
+	VkResult result = vkQueuePresentKHR(contextInfo.presentQueue, &presentInfo);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+		recreateSwapChain();
+	} else if (result != VK_SUCCESS) {
+		std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to present swap chain image!";
+		throw std::runtime_error(ss.str());
+	}
+}
+void VulkanApplication::renderTimeWarp(const uint32_t imageIndex) {
+	std::vector<VkSemaphore> forwardWaitSemaphores = { imageAvailableSemaphore };
+	std::vector<VkPipelineStageFlags> forwardWaitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	updateUniformBuffer();
+
+	//////////////////////////////////
+	//////// TIME WARP AND PP/////////
+	//////////////////////////////////
+	VkSubmitInfo timeWarpSubmitInfo = {};
+	timeWarpSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+	std::vector<VkSemaphore> timeWarpWaitSemaphores = { forwardWaitSemaphores };
+	std::vector<VkPipelineStageFlags> postProcessWaitStages = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+	timeWarpSubmitInfo.waitSemaphoreCount = timeWarpWaitSemaphores.size();
+	timeWarpSubmitInfo.pWaitDstStageMask = &postProcessWaitStages[0];
+	timeWarpSubmitInfo.commandBufferCount = 1;
+
+	for (auto& pipeline : timeWarpPipelines) {
+		timeWarpSubmitInfo.pWaitSemaphores = &timeWarpWaitSemaphores[0];
+		timeWarpSubmitInfo.pCommandBuffers = &pipeline.commandBuffers[imageIndex];
+		std::vector<VkSemaphore> timeWarpSignalSemaphores = { pipeline.renderFinishedSemaphore };
+		timeWarpSubmitInfo.signalSemaphoreCount = timeWarpSignalSemaphores.size();
+		timeWarpSubmitInfo.pSignalSemaphores = &timeWarpSignalSemaphores[0];
+
+		if (vkQueueSubmit(contextInfo.graphicsQueue, 1, &timeWarpSubmitInfo, VK_NULL_HANDLE) != VK_SUCCESS) {
+			std::stringstream ss; ss << "\n" << __LINE__ << ": " << __FILE__ << ": failed to submit draw command buffer!";
+			throw std::runtime_error(ss.str());
+		}
+		timeWarpWaitSemaphores = { pipeline.renderFinishedSemaphore };
+	}
+
+	///////////////////////
+	/////// PRESENT////////
+	///////////////////////
+	VkPresentInfoKHR presentInfo = {};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+
+	std::vector<VkSemaphore> presentSignalSemaphores = { timeWarpPipelines.back().renderFinishedSemaphore };
+	presentInfo.waitSemaphoreCount = presentSignalSemaphores.size();
+	presentInfo.pWaitSemaphores = &presentSignalSemaphores[0];
+	//presentInfo.waitSemaphoreCount = forwardSignalSemaphores.size();
+	//presentInfo.pWaitSemaphores = &forwardSignalSemaphores[0];
+
+	VkSwapchainKHR swapChains[] = { contextInfo.swapChain };
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = swapChains;
+
+	presentInfo.pImageIndices = &imageIndex;
+
+	vkQueueWaitIdle(contextInfo.presentQueue);
+	VkResult result = vkQueuePresentKHR(contextInfo.presentQueue, &presentInfo);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		recreateSwapChain();
@@ -255,14 +331,13 @@ void VulkanApplication::drawFrame() {
 	}
 }
 
-
 void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& inheritanceInfo, const uint32_t imageIndex) {
 
 	inheritanceInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_INHERITANCE_INFO;
 	inheritanceInfo.pNext = NULL;
 	//inheritanceInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
 	inheritanceInfo.framebuffer = forwardPipelinesFramebuffers[imageIndex];
-	inheritanceInfo.renderPass = (contextInfo.camera.vrmode && useStencil) ? 
+	inheritanceInfo.renderPass = (contextInfo.camera.vrmode && contextInfo.camera.useStencil) ? 
 		allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
 	inheritanceInfo.occlusionQueryEnable = VK_FALSE;
 	inheritanceInfo.pipelineStatistics = 0;
@@ -285,7 +360,7 @@ void VulkanApplication::beginRecordingPrimary(VkCommandBufferInheritanceInfo& in
 
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	if(contextInfo.camera.vrmode && useStencil)
+	if(contextInfo.camera.vrmode && contextInfo.camera.useStencil)
 		clearValues[1].depthStencil = { 1.f };
 	else
 		clearValues[1].depthStencil = { 1.f, 1 };
@@ -305,7 +380,7 @@ void VulkanApplication::beginRecordingPrimary(const uint32_t imageIndex) {
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = (contextInfo.camera.vrmode && useStencil) ? 
+	renderPassInfo.renderPass = (contextInfo.camera.vrmode && contextInfo.camera.useStencil) ? 
 		allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
 	//renderPassInfo.framebuffer = contextInfo.swapChainFramebuffers[imageIndex];
 	renderPassInfo.framebuffer = forwardPipelinesFramebuffers[imageIndex];
@@ -315,7 +390,7 @@ void VulkanApplication::beginRecordingPrimary(const uint32_t imageIndex) {
 
 	std::array<VkClearValue, 2> clearValues = {};
 	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 1.0f };
-	if(contextInfo.camera.vrmode && useStencil)
+	if(contextInfo.camera.vrmode && contextInfo.camera.useStencil)
 		clearValues[1].depthStencil = { 1.f };
 	else
 		clearValues[1].depthStencil = { 1.f, 1 };
@@ -356,7 +431,7 @@ void VulkanApplication::updateUniformBuffer() {
 	ubo.view[0] = contextInfo.camera.view[0];
 	ubo.view[1] = contextInfo.camera.view[1];
 	ubo.proj = contextInfo.camera.proj;
-	ubo.proj[1][1] *= -1;//need for correct z-buffer order
+	//ubo.proj[1][1] *= -1;//need for correct z-buffer order
 	ubo.viewProj[0] = ubo.proj * contextInfo.camera.view[0];
 	ubo.viewProj[1] = ubo.proj * contextInfo.camera.view[1];
 	ubo.viewPos = glm::vec4(contextInfo.camera.camPos, 1.f);
@@ -456,6 +531,13 @@ void VulkanApplication::processInputAndUpdateFPS() {
 		contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
 		recreateSwapChain();
 	}
+	if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS && contextInfo.camera.vrmode) {
+		//we need to disable stencil, recreateSwapChain(so that forward render graphics pipeline
+		//uses the stencil-less render pass format so we can get a depth image that has depth info for each pixel
+		//set a flag indicating we want to render one more time so that we can :1. get the tripple buffer index and render into that image with all pixel info in tact(stencil would leave holes)
+		contextInfo.camera.updateTimeWarpState();
+		recreateSwapChain();
+	}
 	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS && contextInfo.camera.vrmode && contextInfo.camera.qualityEnabled) {
 		const bool increaseQuality = false;
 		const int indexBefore = contextInfo.camera.qualityIndex;
@@ -547,58 +629,104 @@ void VulkanApplication::destroyPipelinesSemaphores() {
 }
 
 void VulkanApplication::createPipelines() {
-	//forwardPipelines
-	forwardPipelines.resize(allShaders_ForwardPipeline.size());
-	textureMapFlagsToForwardPipelineIndex.resize(allShaders_ForwardPipeline.size());
+	////////////////////////////////////
+	//////// FORWARD PIPELINES//////////
+	////////////////////////////////////
+	forwardPipelines.resize(allShaders_ForwardPipelines.size());
+	textureMapFlagsToForwardPipelineIndex.resize(allShaders_ForwardPipelines.size());
 	initForwardPipelinesVulkanImagesAndFramebuffers();
 
-	for (uint32_t i = 0; i < allShaders_ForwardPipeline.size(); ++i) {
+	for (uint32_t i = 0; i < allShaders_ForwardPipelines.size(); ++i) {
 		int numImageSamplers = 0;
 		for (uint32_t k = 1; k < VulkanDescriptor::MAX_IMAGESAMPLERS + 1; ++k) //the first bit is for HAS_NONE so we need to ignore that one
-			numImageSamplers = (allShaders_ForwardPipeline[i].second & 1 << k) ? numImageSamplers + 1 : numImageSamplers;
+			numImageSamplers = (allShaders_ForwardPipelines[i].second & 1 << k) ? numImageSamplers + 1 : numImageSamplers;
 
-		textureMapFlagsToForwardPipelineIndex[i] = allShaders_ForwardPipeline[i].second;//create the mapping based on shaders we have
-		forwardPipelines[i] = VulkanGraphicsPipeline(allShaders_ForwardPipeline[i].first,
+		textureMapFlagsToForwardPipelineIndex[i] = allShaders_ForwardPipelines[i].second;//create the mapping based on shaders we have
+		forwardPipelines[i] = VulkanGraphicsPipeline(allShaders_ForwardPipelines[i].first,
 			allRenderPasses, contextInfo, &(VulkanDescriptor::layoutTypes[numImageSamplers]));
 	}
 
-	//post process pipelines
-	postProcessPipelines.resize(allShaders_PostProcessPipeline.size());
-	for (uint32_t i = 0; i < allShaders_PostProcessPipeline.size(); ++i) {
-		//const uint32_t numImageSamplers = allShaders_PostProcessPipeline[i].second;
-		const uint32_t numImageSamplers = std::get<1>(allShaders_PostProcessPipeline[i]);
-		const std::vector<std::string>& shaderPaths = std::get<0>(allShaders_PostProcessPipeline[i]);
-
-		//need an mapping from numimagesamplers to layouttypes index
-		if (i != allShaders_PostProcessPipeline.size() - 1) { //if not last output format should be 16F
-			postProcessPipelines[i] = PostProcessPipeline(shaderPaths,
-				allRenderPasses, contextInfo, &(VulkanDescriptor::postProcessLayoutTypes[numImageSamplers - 1]), false);
-		} else { //last one, outputImage should be swapchain format
-			postProcessPipelines[i] = PostProcessPipeline(shaderPaths,
-				allRenderPasses, contextInfo, &(VulkanDescriptor::postProcessLayoutTypes[numImageSamplers - 1]), true);
-		}
+	////////////////////////////////////
+	/////// POST PROCESS PIPELINES//////
+	////////////////////////////////////
+	postProcessPipelines.resize(allShaders_PostProcessPipelines.size());
+	for (uint32_t i = 0; i < allShaders_PostProcessPipelines.size(); ++i) {
+		//const uint32_t numImageSamplers = allShaders_PostProcessPipelines[i].second;
+		const std::vector<std::string>& shaderPaths = std::get<0>(allShaders_PostProcessPipelines[i]);
+		const uint32_t numImageSamplers = std::get<1>(allShaders_PostProcessPipelines[i]);
+		const PipelineType typeFlags = (PipelineType)std::get<2>(allShaders_PostProcessPipelines[i]);
+		postProcessPipelines[i] = PostProcessPipeline(shaderPaths, allRenderPasses, contextInfo,
+			&(VulkanDescriptor::postProcessLayoutTypes[numImageSamplers - 1]), (i == allShaders_PostProcessPipelines.size() - 1),
+			typeFlags);
 	}
 
 	//each pp needs inputdescriptor set ofprevious stage
 	postProcessPipelines[0].createInputDescriptors(contextInfo, forwardPipelinesVulkanImages);
 	for (uint32_t i = 1; i < postProcessPipelines.size(); ++i) {
-		//TODO: second are should be determined from tuple element in allShaders_PostProcessPipeline specifying which stage feeds it
+		//TODO: second are should be determined from tuple element in allShaders_PostProcessPipelines specifying which stage feeds it
 		postProcessPipelines[i].createInputDescriptors(contextInfo, postProcessPipelines[i-1].outputImages);
 	}
 
 	//create the static command buffers(no dynamic input for post processing)
-	for (uint32_t i = 0; i < allShaders_PostProcessPipeline.size(); ++i) {
+	for (uint32_t i = 0; i < allShaders_PostProcessPipelines.size()-1; ++i) {
+		postProcessPipelines[i].createStaticCommandBuffers(contextInfo, allRenderPasses, { ndcTriangle, ndcTriangle });
+	}
+	postProcessPipelines.back().createStaticCommandBuffers(contextInfo, allRenderPasses, { ndcTriangle, ndcTriangle });
+	//postProcessPipelines.back().createStaticCommandBuffers(contextInfo, allRenderPasses, {ndcBarrelMesh[0], ndcBarrelMesh[1]});
+	//postProcessPipelines.back().createStaticCommandBuffers(contextInfo, allRenderPasses, {ndcBarrelMesh_PreCalc[0], ndcBarrelMesh_PreCalc[1]});
+
+
+	/////////////////////////////////////
+	//////// TIME WARP PIPELINES/////////
+	/////////////////////////////////////
+	if (contextInfo.camera.timewarp) {
+		createTimeWarpPipelines();
+	}
+}
+
+void VulkanApplication::createTimeWarpPipelines() {
+	contextInfo.camera.timewarpCleanUp = true;
+	timeWarpPipelines.resize(allShaders_TimeWarpPipelines.size());
+	for (uint32_t i = 0; i < allShaders_TimeWarpPipelines.size(); ++i) {
+		//const uint32_t numImageSamplers = allShaders_TimeWarpPipelines[i].second;
+		const std::vector<std::string>& shaderPaths = std::get<0>(allShaders_TimeWarpPipelines[i]);
+		const uint32_t numImageSamplers = std::get<1>(allShaders_TimeWarpPipelines[i]);
+		const PipelineType typeFlags = (PipelineType)std::get<2>(allShaders_TimeWarpPipelines[i]);
+		//raster prim was a dumb idea, just need a flag for timewarp
+
 		//need an mapping from numimagesamplers to layouttypes index
-		if (i != allShaders_PostProcessPipeline.size() - 1) { //if not last output format should be 16F
-			postProcessPipelines[i].createStaticCommandBuffers(contextInfo, allRenderPasses, {ndcTriangle, ndcTriangle});
+		if (i == 0) {//first one is actual time warp
+			timeWarpPipelines[i] = PostProcessPipeline(shaderPaths, allRenderPasses, contextInfo,
+				&(VulkanDescriptor::timeWarpLayoutTypes[0]), (i == (allShaders_TimeWarpPipelines.size()-1)),//isPresent
+				typeFlags);
 		} else { //last one, outputImage should be swapchain format
-			postProcessPipelines[i].createStaticCommandBuffers(contextInfo, allRenderPasses, {ndcTriangle, ndcTriangle});
-			//postProcessPipelines[i].createStaticCommandBuffers(contextInfo, allRenderPasses, {ndcBarrelMesh[0], ndcBarrelMesh[1]});
-			//postProcessPipelines[i].createStaticCommandBuffers(contextInfo, allRenderPasses, {ndcBarrelMesh_PreCalc[0], ndcBarrelMesh_PreCalc[1]});
+			timeWarpPipelines[i] = PostProcessPipeline(shaderPaths, allRenderPasses, contextInfo,
+				&(VulkanDescriptor::postProcessLayoutTypes[numImageSamplers - 1]), (i == allShaders_TimeWarpPipelines.size()-1) ,//isPresent
+				typeFlags);
 		}
 	}
 
+}
 
+void VulkanApplication::createTimeWarpDescriptorAndCommands() {
+	//each pp needs inputdescriptor set ofprevious stage
+	timeWarpPipelines[0].createInputDescriptorsTimeWarp(contextInfo, forwardPipelinesVulkanImages, contextInfo.depthImage,
+		uniformBuffer, sizeof(UniformBufferObject));
+	for (uint32_t i = 1; i < timeWarpPipelines.size(); ++i) {
+		//TODO: second are should be determined from tuple element in allShaders_TimeWarpPipelines specifying which stage feeds it
+		timeWarpPipelines[i].createInputDescriptors(contextInfo, timeWarpPipelines[i - 1].outputImages);
+	}
+
+	//create the static command buffers(no dynamic input for post processing)
+	for (uint32_t i = 0; i < allShaders_TimeWarpPipelines.size(); ++i) {
+		//need an mapping from numimagesamplers to layouttypes index
+		if (i == 0) { //first one, time warp, use ndcPixelPoints
+			//timeWarpPipelines[i].createStaticCommandBuffersTimeWarp(contextInfo, allRenderPasses, { ndcPixelPoints, ndcPixelPoints });
+			timeWarpPipelines[i].createStaticCommandBuffersTimeWarp(contextInfo, allRenderPasses, { ndcBarrelMesh[0], ndcBarrelMesh[0] });
+		} else { //normal pp mesh(triangle)
+			timeWarpPipelines[i].createStaticCommandBuffers(contextInfo, allRenderPasses, { ndcTriangle, ndcTriangle });
+		}
+	}
 }
 
 void VulkanApplication::initForwardPipelinesVulkanImagesAndFramebuffers() {
@@ -630,7 +758,7 @@ void VulkanApplication::initForwardPipelinesVulkanImagesAndFramebuffers() {
 		framebufferCreateInfo.pNext = NULL;
 
 		std::vector<VkImageView> attachments = { forwardPipelinesVulkanImages[i].imageView, contextInfo.depthImage.imageView };
-		framebufferCreateInfo.renderPass = (contextInfo.camera.vrmode && useStencil) ? 
+		framebufferCreateInfo.renderPass = (contextInfo.camera.vrmode && contextInfo.camera.useStencil) ? 
 			allRenderPasses.renderPassStencilLoading : allRenderPasses.renderPass;
 		framebufferCreateInfo.pAttachments = attachments.data();
 		framebufferCreateInfo.attachmentCount = attachments.size();
@@ -680,6 +808,16 @@ void VulkanApplication::destroyOffScreenRenderTargets() {
 			image.destroyVulkanImage(contextInfo);
 		}
 	}
+
+	////dont need to do the last one since it refers to the swap chain
+	if (contextInfo.camera.timewarpCleanUp) {
+		for (uint32_t i = 0; i < timeWarpPipelines.size() - 1; ++i) {
+			for (auto& image : timeWarpPipelines[i].outputImages) {
+				image.destroyVulkanImage(contextInfo);
+			}
+		}
+		contextInfo.camera.timewarpCleanUp = false;
+	}
 }
 
 void VulkanApplication::freeGlobalCommandBuffers() {
@@ -694,6 +832,11 @@ void VulkanApplication::destroyPipelines() {
 	}
 	for (auto& pipeline : postProcessPipelines) {
 		pipeline.destroyVulkanPipeline(contextInfo);
+	}
+	if (contextInfo.camera.timewarpCleanUp) {
+		for (auto& pipeline : timeWarpPipelines) {
+			pipeline.destroyVulkanPipeline(contextInfo);
+		}
 	}
 }
 
@@ -840,4 +983,5 @@ void VulkanApplication::createPPMeshes() {
 	ndcBarrelMesh[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH, 1);
 	ndcBarrelMesh_PreCalc[0] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 0);
 	ndcBarrelMesh_PreCalc[1] = Mesh(contextInfo, MESHTYPE::NDCBARRELMESH_PRECALC, 1);
+	ndcPixelPoints = Mesh(contextInfo, MESHTYPE::NDCPIXELPOINTS);
 }
