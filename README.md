@@ -58,6 +58,8 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 * Can probably avoid async time and space warp altogether.
 ![](SecondaryVR/img/adaptiveQuality.bmp)
 ![](SecondaryVR/img/adaptiveQualitySettings.png)
+**Cycling back and forth through settings**<br />
+![](SecondaryVR/img/AQ.gif)
 ** Resolution scale 1.5<br />
 ![](SecondaryVR/img/adaptiveQuality1.5.png)
 ** Resolution scale 1.0<br />

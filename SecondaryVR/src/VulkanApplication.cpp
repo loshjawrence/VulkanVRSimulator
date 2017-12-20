@@ -531,6 +531,10 @@ void VulkanApplication::processInputAndUpdateFPS() {
 		contextInfo.camera.updateDimensions(contextInfo.swapChainExtent);
 		recreateSwapChain();
 	}
+	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS) {
+		contextInfo.camera.useStencil = !contextInfo.camera.useStencil;
+		recreateSwapChain();
+	}
 	if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS && contextInfo.camera.vrmode) {
 		//we need to disable stencil, recreateSwapChain(so that forward render graphics pipeline
 		//uses the stencil-less render pass format so we can get a depth image that has depth info for each pixel
