@@ -17,6 +17,7 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 # Issues with finding inverse Brown-Conrady Distortion
 * I relied on the Secant Method for finding the inverse of non-invertable function in order to reverse warp the mesh in optios 2 and 3 above. 
 * However, you can run into root jumping issues, which I did but got around by letting the mesh position fall where it may recalculating its UV and finding the source UV from the normal Brown-conrady distortion. It's all pre-baked anyway so it doesnt matter it we take this extra step, just so long as the end result is correct.
+![](SecondaryVR/img/secant.png)
 ![](SecondaryVR/img/secantmethod.png)
 ![](SecondaryVR/img/rootjumping.png)
 ![](SecondaryVR/img/precalcmesh.png)
@@ -27,15 +28,20 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 * Radial Density masking uses the stencil to cull 2x2 pixel quads in early-z to avoid rendering them in the fragment shader. 
 * The Mask is made by hand in code and uploaded to the stencil once and is used by the forward render pass (VR renderers need forward rendering because MSAA is such a huge win for image fidelity)
 * Masking is huge savings, about 20-25% off the top, the issue however is hole filling. Which can put you back where you started, it did for me.
+**Vlachos GDC 2016 VR talk on radial density masking**<br />
+![](SecondaryVR/img/radialdensitymask.png)
+**Construct 8bit array of stencil values before rendering**<br />
 ![](SecondaryVR/img/radialStencilMask.bmp)
+**Draw scene**<br />
 ![](SecondaryVR/img/stencilMask1to1.png)
-![](SecondaryVR/img/stencilmask.png)
+**Fill holes then warp**<br />
 ![](SecondaryVR/img/holefill.png)
 ![](SecondaryVR/img/all.png)
+**Warping without hole filling**<br />
+![](SecondaryVR/img/stencilmask.png)
+**Debug view hole filling**<br />
 ![](SecondaryVR/img/debugHoleFill.png)
-![](SecondaryVR/img/noBarrelNoStencil.png)
-![](SecondaryVR/img/noBarrelStencilHoleFill.png)
-![](SecondaryVR/img/radialdensitymask.png)
+**Sony's version of radial density masking**<br />
 ![](SecondaryVR/img/radialDensityMaskingWithTAA.png)
 
 # Optimizing Stencil Hole Fill
@@ -60,11 +66,9 @@ for reasons why the mesh needs to be dense enough (texture sampling gets funky b
 ![](SecondaryVR/img/adaptiveQualitySettings.png)
 **Cycling back and forth through settings**<br />
 ![](SecondaryVR/img/AQ.gif)
-** Resolution scale 1.5<br />
+**Resolution scale 1.5**<br />
 ![](SecondaryVR/img/adaptiveQuality1.5.png)
-** Resolution scale 1.0<br />
-![](SecondaryVR/img/adaptiveQuality1.0.png)
-** Resolution scale 0.5<br />
+**Resolution scale 0.5**<br />
 ![](SecondaryVR/img/adaptiveQuality0.5.png)
 
 # Asynchronous Time Warp (ATW)
