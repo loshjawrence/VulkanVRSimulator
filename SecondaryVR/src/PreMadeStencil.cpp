@@ -100,47 +100,41 @@ void PreMadeStencil::createPreCalcBarrelSamplingStencilMask(const VulkanContextI
 
 					
 					//tag all 4 pixels in each of teh 3 channel's pixel quads
-					//if ((((groupRed.x - 1) & 0x3) == 0) && (((groupRed.y - 1) & 0x3) == 0) //both divis by 4
-					// || (((groupRed.x - 3) & 0x3) == 0) && (((groupRed.y - 3) & 0x3) == 0)) { //shift the above pattern right and down to get checker
 						  //set group of 4 to stencilMask. uv as it is resolves to lower right pixel
-						radialDensityMask[camIndex][(groupRed.y    )*width	+ groupRed.x    ] = stencilMaskVal;//lowerright
-						radialDensityMask[camIndex][(groupRed.y - 1)*width	+ groupRed.x    ] = stencilMaskVal;//upperright
-						radialDensityMask[camIndex][(groupRed.y - 1)*width	+ groupRed.x - 1] = stencilMaskVal;//upperleft
-						radialDensityMask[camIndex][(groupRed.y	   )*width	+ groupRed.x - 1] = stencilMaskVal;//lowerleft
-					//}
+						//radialDensityMask[camIndex][(groupRed.y    )*width	+ groupRed.x    ] = stencilMaskVal;//lowerright
+						//radialDensityMask[camIndex][(groupRed.y - 1)*width	+ groupRed.x    ] = stencilMaskVal;//upperright
+						//radialDensityMask[camIndex][(groupRed.y - 1)*width	+ groupRed.x - 1] = stencilMaskVal;//upperleft
+						//radialDensityMask[camIndex][(groupRed.y	   )*width	+ groupRed.x - 1] = stencilMaskVal;//lowerleft
 
-					//if ((((groupGreen.x - 1) & 0x3) == 0) && (((groupGreen.y - 1) & 0x3) == 0) //both divis by 4
-					// || (((groupGreen.x - 3) & 0x3) == 0) && (((groupGreen.y - 3) & 0x3) == 0)) { //shift the above pattern right and down to get checker
 						  //set group of 4 to stencilMask. uv as it is resolves to lower right pixel
 						radialDensityMask[camIndex][(groupGreen.y    )*width	+ groupGreen.x    ] = stencilMaskVal;//lowerright
 						radialDensityMask[camIndex][(groupGreen.y - 1)*width	+ groupGreen.x    ] = stencilMaskVal;//upperright
 						radialDensityMask[camIndex][(groupGreen.y - 1)*width	+ groupGreen.x - 1] = stencilMaskVal;//upperleft
 						radialDensityMask[camIndex][(groupGreen.y	 )*width	+ groupGreen.x - 1] = stencilMaskVal;//lowerleft
-					//}
 
-					//if ((((groupBlue.x - 1) & 0x3) == 0) && (((groupBlue.y - 1) & 0x3) == 0) //both divis by 4
-					// || (((groupBlue.x - 3) & 0x3) == 0) && (((groupBlue.y - 3) & 0x3) == 0)) { //shift the above pattern right and down to get checker
 						  //set group of 4 to stencilMask. uv as it is resolves to lower right pixel
-						radialDensityMask[camIndex][(groupBlue.y    )*width	+ groupBlue.x    ] = stencilMaskVal;//lowerright
-						radialDensityMask[camIndex][(groupBlue.y - 1)*width	+ groupBlue.x    ] = stencilMaskVal;//upperright
-						radialDensityMask[camIndex][(groupBlue.y - 1)*width	+ groupBlue.x - 1] = stencilMaskVal;//upperleft
-						radialDensityMask[camIndex][(groupBlue.y	)*width	+ groupBlue.x - 1] = stencilMaskVal;//lowerleft
-					//}
+						//radialDensityMask[camIndex][(groupBlue.y    )*width	+ groupBlue.x    ] = stencilMaskVal;//lowerright
+						//radialDensityMask[camIndex][(groupBlue.y - 1)*width	+ groupBlue.x    ] = stencilMaskVal;//upperright
+						//radialDensityMask[camIndex][(groupBlue.y - 1)*width	+ groupBlue.x - 1] = stencilMaskVal;//upperleft
+						//radialDensityMask[camIndex][(groupBlue.y	)*width	+ groupBlue.x - 1] = stencilMaskVal;//lowerleft
 				} //if in radius
 			}//x
 		}//x
 	}//camIndex
 
 	//XOR values to get result
+	int uniquePixels = 0;
 	for (int y = 0; y <height; ++y) {
 		for (int x = 0; x < width; ++x) {
 			const int stencilIndex = (y*width + x);
 			uint32_t xorResult = radialDensityMask[0][stencilIndex] ^ radialDensityMask[1][stencilIndex];
 			//radialDensityMask[2][stencilIndex] = radialDensityMask[0][stencilIndex];
 			radialDensityMask[2][stencilIndex] = xorResult;
+			uniquePixels += xorResult;
 		}
 	}
 
+	std::cout << "\nUniquePixels: " << uniquePixels << " : " << filename;
 	writeStencilToImage(radialDensityMask[2]);
 }
 
@@ -209,15 +203,18 @@ void PreMadeStencil::createRadialDensityStencilMask(const VulkanContextInfo& con
 	}//camIndex
 
 	//XOR values to get result
+	int uniquePixels = 0;
 	for (int y = 0; y <height; ++y) {
 		for (int x = 0; x < width; ++x) {
 			const int stencilIndex = (y*width + x);
 			uint32_t xorResult = radialDensityMask[0][stencilIndex] ^ radialDensityMask[1][stencilIndex];
 			//radialDensityMask[2][stencilIndex] = radialDensityMask[0][stencilIndex];
 			radialDensityMask[2][stencilIndex] = xorResult;
+			uniquePixels += xorResult;
 		}
 	}
 
+	std::cout << "\nUniquePixels: " << uniquePixels << " : " << filename;
 	writeStencilToImage(radialDensityMask[2]);
 }
 

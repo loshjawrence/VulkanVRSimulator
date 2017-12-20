@@ -96,6 +96,7 @@ void VulkanApplication::initVulkan() {
 	//contextInfo = VulkanContextInfo(window,std::string("radialStencilMask.bmp"));
 	contextInfo = VulkanContextInfo(window);
 	VulkanApplication::setupDebugCallback();
+	//PreMadeStencil stencil = PreMadeStencil(contextInfo, 0, StencilType::PreCalcBarrelSamplingMask);
 
 	
 	//describes input and output attachments and how subpasses relate to one another
